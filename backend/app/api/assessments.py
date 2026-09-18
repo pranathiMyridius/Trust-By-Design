@@ -10,6 +10,7 @@ from app.schemas.assessment import (
     AssessmentResponse,
 )
 from app.risk_engine.engine import RiskEngine
+from app.langgraph.service import run_risk_assessment_workflow
 from app.risk_engine.scoring import (
     calculate_overall_score,
     determine_risk_level,
@@ -235,6 +236,31 @@ def analyze_assessment(
     assessment_id: int,
     db: Session = Depends(get_db),
 ):
+    """
+    Run the assessment through the LangGraph orchestration layer.
+
+    LangGraph currently orchestrates the existing deterministic risk
+    engine; it does not duplicate or replace the business rules.
+    Claude/LLM nodes can be added later without changing this API contract.
+    """
+    try:
+        run_risk_assessment_workflow(
+            assessment_id=assessment_id,
+            db=db,
+        )
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Risk assessment workflow failed: {str(exc)}",
+        )
+
     assessment = (
         db.query(Assessment)
         .filter(Assessment.id == assessment_id)
@@ -246,59 +272,6 @@ def analyze_assessment(
             status_code=404,
             detail="Assessment not found",
         )
-
-    previous_status = assessment.status
-
-    intelligence = (
-        db.query(AssessmentIntelligence)
-        .filter(
-            AssessmentIntelligence.assessment_id == assessment.id
-        )
-        .first()
-    )
-
-    risk_engine = RiskEngine()
-
-    db.query(RiskResult).filter(
-        RiskResult.assessment_id == assessment.id
-    ).delete()
-
-    results = risk_engine.assess(
-        change_type=assessment.change_type,
-        description=assessment.description,
-        evidence=assessment.evidence,
-        intelligence=intelligence,
-    )
-
-    for result in results:
-        risk_result = RiskResult(
-            assessment_id=assessment.id,
-            dimension=result.dimension,
-            score=result.score,
-            severity=result.severity,
-            reason=result.reason,
-        )
-
-        db.add(risk_result)
-
-    overall_score = calculate_overall_score(results)
-    risk_level = determine_risk_level(overall_score)
-
-    assessment.overall_score = overall_score
-    assessment.risk_level = risk_level
-    assessment.status = "READY_FOR_REVIEW"
-
-    log_audit_event(
-        db=db,
-        assessment_id=assessment.id,
-        action=AuditAction.ANALYSIS,
-        previous_status=previous_status,
-        new_status="READY_FOR_REVIEW",
-        details="Risk assessment analyzed successfully.",
-    )
-
-    db.commit()
-    db.refresh(assessment)
 
     return assessment
 

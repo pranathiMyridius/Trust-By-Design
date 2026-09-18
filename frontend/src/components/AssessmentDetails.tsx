@@ -781,7 +781,7 @@ function AssessmentDetails({
                   : `Status: ${assessment.status}`}
               </strong>
 
-              <p>fv
+              <p>
                 The current review decision is{" "}
                 <strong>{assessment.status}</strong>.
               </p>
