@@ -1,0 +1,42 @@
+# Python
+.venv/
+backend/.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Environment / Secrets
+.env
+.env.*
+!.env.example
+
+# Node / Frontend
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-ssr/
+*.local
+
+# Logs
+*.log
+logs/
+
+# Local databases / runtime files
+*.db
+backend/uploaded_files/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Python test/cache
+.pytest_cache/
+.mypy_cache/
+
+# Node logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

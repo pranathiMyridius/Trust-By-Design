@@ -1,0 +1,178 @@
+.intelligence-card {
+  margin-top: 24px;
+}
+
+.intelligence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding: 20px 24px 24px;
+}
+
+.intelligence-item {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.intelligence-item span:first-child {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.intelligence-item strong {
+  font-size: 14px;
+  color: #111827;
+}
+
+.intelligence-wide {
+  grid-column: span 2;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.info-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef1f5;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.risk-tag {
+  background: #fff4e5;
+  color: #92400e;
+}
+
+@media (max-width: 768px) {
+  .intelligence-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .intelligence-wide {
+    grid-column: span 1;
+  }
+}
+.audit-card {
+  margin-top: 24px;
+}
+
+.audit-list {
+  padding: 8px 24px 24px;
+}
+
+.audit-item {
+  display: flex;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.audit-item:last-child {
+  border-bottom: none;
+}
+
+.audit-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eef1f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.audit-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.audit-header strong {
+  font-size: 13px;
+  color: #111827;
+}
+
+.audit-header span {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.audit-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.audit-status span {
+  color: #9ca3af;
+}
+
+.audit-content p {
+  margin: 7px 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.audit-actor {
+  font-size: 11px;
+  color: #9ca3af;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.pagination-button {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 14px;
+  background: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+}
