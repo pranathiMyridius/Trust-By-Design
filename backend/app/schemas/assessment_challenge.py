@@ -23,8 +23,13 @@ class AssessmentChallengeResponse(BaseModel):
 
     findings: list[ChallengeFinding]
     inherent_score: float
-    residual_score: float
-    residual_level: str
+    # Preview through the residual grid; None (with residual_reason) when
+    # the inherent result is provisional or there are no risks to rate
+    # controls against. The value of record is frozen at RESIDUAL_RISK.
+    residual_score: Optional[float] = None
+    residual_level: Optional[str] = None
+    residual_reason: Optional[str] = None
+    control_rating: Optional[str] = None
     control_reduction: float
 
 
