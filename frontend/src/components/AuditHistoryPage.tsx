@@ -9,9 +9,14 @@ interface AuditHistoryPageProps {
 function AuditHistoryPage({
   auditEvents,
   assessments,
-  onSelectAssessment,
 }: AuditHistoryPageProps) {
-  function getAssessment(assessmentId: number): Assessment | undefined {
+  function getAssessment(
+    assessmentId: number | null
+  ): Assessment | undefined {
+    if (assessmentId == null) {
+      return undefined;
+    }
+
     return assessments.find(
       (assessment) => assessment.id === assessmentId
     );
@@ -40,6 +45,12 @@ function AuditHistoryPage({
 
       case "REJECTION":
         return "audit-badge rejection";
+
+      case "RISK_CALCULATOR_UPDATED":
+        return "audit-badge calculator";
+
+      case "MANUAL_SCORE_OVERRIDE":
+        return "audit-badge override";
 
       default:
         return "audit-badge";
@@ -134,6 +145,12 @@ function AuditHistoryPage({
                     event.assessment_id
                   );
 
+                  const isStandaloneCalculator =
+                    event.assessment_id == null;
+                  // AW.7: delegation events are not tied to an assessment
+                  // either, but are not calculator activity.
+                  const isDelegation = event.action.startsWith("DELEGATION_");
+
                   return (
                     <tr
                       key={event.id}
@@ -141,8 +158,12 @@ function AuditHistoryPage({
                     >
                       <td>
                         <div className="assessment-cell">
-                          <div className="assessment-avatar">
-                            {assessment?.title
+                          <div className="assessment-avatar" aria-hidden="true">
+                            {isStandaloneCalculator
+                              ? isDelegation
+                                ? "⇄"
+                                : "▣"
+                              : assessment?.title
                               ? assessment.title
                                   .charAt(0)
                                   .toUpperCase()
@@ -151,12 +172,18 @@ function AuditHistoryPage({
 
                           <div className="assessment-info">
                             <strong>
-                              {assessment?.title ||
-                                "Assessment"}
+                              {isStandaloneCalculator
+                                ? isDelegation
+                                  ? "Delegation"
+                                  : "Risk Calculator"
+                                : assessment?.title ||
+                                  "Assessment"}
                             </strong>
 
                             <span>
-                              Assessment #{event.assessment_id}
+                              {isStandaloneCalculator
+                                ? "Not tied to an assessment"
+                                : `Assessment #${event.assessment_id}`}
                             </span>
                           </div>
                         </div>
@@ -176,9 +203,10 @@ function AuditHistoryPage({
                               {event.previous_status || "—"}
                             </span>
 
-                            <span className="transition-arrow">
+                            <span className="transition-arrow" aria-hidden="true">
                               →
                             </span>
+                            <span className="sr-only"> changed to </span>
 
                             <span className="status-pill">
                               {event.new_status || "—"}
