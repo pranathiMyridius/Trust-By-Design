@@ -1,0 +1,364 @@
+/* =========================================
+   STAGE 14 — WORKFLOW PANEL + WORK QUEUE
+   Matches the app's existing light palette (see App.css).
+   ========================================= */
+
+.wf-panel {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wf-muted {
+  color: #6b7280;
+}
+
+.wf-small {
+  font-size: 12px;
+}
+
+.wf-error {
+  color: #991b1b;
+}
+
+.wf-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.wf-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.wf-status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.wf-status {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.wf-status-draft,
+.wf-status-closed {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.wf-status-information_requested,
+.wf-status-amendment_required,
+.wf-status-deferred {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.wf-status-approved,
+.wf-status-approved_with_conditions {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.wf-status-rejected {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.wf-sla {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wf-sla + .wf-sla {
+  margin-left: 4px;
+}
+
+.wf-sla-on_track {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.wf-sla-at_risk {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.wf-sla-overdue,
+.wf-sla-escalated {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.wf-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wf-actions button {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.wf-danger {
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.wf-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 20px;
+  margin: 0;
+}
+
+.wf-grid > div {
+  min-width: 0;
+}
+
+.wf-grid-wide {
+  grid-column: span 2;
+}
+
+.wf-grid dt {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 3px;
+}
+
+.wf-grid dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  overflow-wrap: anywhere;
+}
+
+.wf-banner {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wf-banner ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.wf-banner-danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.wf-banner-warning {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.wf-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.wf-form label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 4px;
+}
+
+.wf-form-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.wf-form select,
+.wf-form input,
+.wf-form textarea {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  max-width: 100%;
+}
+
+.wf-form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.wf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wf-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wf-chip-locked {
+  border-color: #e5e7eb;
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.wf-table-wrap {
+  overflow-x: auto;
+}
+
+.wf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.wf-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.wf-table td {
+  padding: 10px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+  color: #1f2937;
+}
+
+.wf-sub {
+  display: block;
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.wf-nowrap {
+  white-space: nowrap;
+}
+
+.wf-clickable {
+  cursor: pointer;
+}
+
+.wf-clickable:hover td {
+  background: #f9fafb;
+}
+
+.wf-queue-section {
+  margin-bottom: 24px;
+}
+
+.wf-queue-table td:first-child {
+  min-width: 200px;
+}
+
+.wf-text-danger {
+  color: #b91c1c;
+}
+
+.wf-text-warning {
+  color: #b45309;
+}
+
+.wf-list-meta {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .wf-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .wf-panel {
+    padding: 16px;
+  }
+
+  .wf-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wf-grid-wide {
+    grid-column: auto;
+  }
+}
+
+/* R14.5: workflow history timeline. */
+.wf-history {
+  margin-top: 12px;
+}
+
+.wf-history summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.wf-history-scroll {
+  max-height: 320px;
+  overflow: auto;
+  margin-top: 8px;
+}
+
+.wf-history-empty {
+  color: #667085;
+  font-size: 13px;
+  margin: 8px 0 0;
+}

@@ -1,0 +1,420 @@
+/* =========================================
+   RISK IDENTIFICATION PROGRESS (components/RiskIdentificationModal.tsx)
+   ========================================= */
+
+.rim-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 16px;
+  background: rgba(17, 24, 39, 0.55);
+}
+
+.rim {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(17, 24, 39, 0.3);
+  padding: 22px 22px 18px;
+  color: #111827;
+  font-size: 13px;
+  line-height: 1.4;
+  outline: none;
+}
+
+.rim-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rim-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: #111827;
+}
+
+.rim-role {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.rim-case-row {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.rim-case-row span {
+  text-transform: capitalize;
+}
+
+.rim-case-row strong {
+  color: #111827;
+  white-space: nowrap;
+}
+
+.rim-progress {
+  margin-top: 6px;
+  height: 5px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.rim-progress span {
+  display: block;
+  height: 100%;
+  background: #7e22ce;
+  transition: width 0.4s ease;
+}
+
+.rim-scope {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #4b5563;
+}
+
+.rim-section {
+  margin: 18px 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #4b5563;
+}
+
+.rim-stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.rim-stage {
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.rim-stage-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rim-stage-current {
+  border-color: #c4b5fd;
+  background: #faf5ff;
+}
+
+.rim-stage-warning {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+.rim-stage-running {
+  border-color: #a855f7;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.08);
+}
+
+.rim-stage-failed {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.rim-stage-icon {
+  width: 16px;
+  flex-shrink: 0;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.rim-stage-completed .rim-stage-icon {
+  color: #16a34a;
+}
+
+.rim-stage-failed .rim-stage-icon {
+  color: #dc2626;
+}
+
+.rim-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #6b7280;
+}
+
+.rim-spinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid #e9d5ff;
+  border-top-color: #7e22ce;
+  animation: rim-spin 0.9s linear infinite;
+}
+
+@keyframes rim-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rim-spinner {
+    animation: none;
+    border-color: #7e22ce;
+  }
+}
+
+.rim-stage-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rim-stage-body strong {
+  display: block;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.rim-stage-body span {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+.rim-badge {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.rim-badge-completed { background: #dcfce7; color: #15803d; }
+.rim-badge-running { background: #f3e8ff; color: #7e22ce; }
+.rim-badge-failed,
+.rim-badge-blocked { background: #fee2e2; color: #b91c1c; }
+.rim-badge-skipped { background: #f3f4f6; }
+.rim-badge-current { background: #ede9fe; color: #6d28d9; }
+.rim-badge-warning { background: #fef3c7; color: #b45309; }
+
+.rim-error {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 11px;
+}
+
+.rim-engines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rim-engine {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid;
+  font-size: 9.5px;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.rim-engine-ai { color: #15803d; background: #f0fdf4; border-color: #86efac; }
+.rim-engine-rules { color: #b45309; background: #fffbeb; border-color: #fcd34d; }
+.rim-engine-unavailable { color: #b91c1c; background: #fef2f2; border-color: #fca5a5; }
+
+.rim-engine.active {
+  box-shadow: 0 0 0 2px currentColor;
+}
+
+.rim-engine.dim {
+  opacity: 0.35;
+}
+
+.rim-hint {
+  margin: 6px 0 0;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.rim-foot {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rim-authorized {
+  flex: 1 1 160px;
+  font-size: 10px;
+  color: #4b5563;
+}
+
+.rim-authorized strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 10px;
+  color: #111827;
+}
+
+.rim-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rim-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: #1f2937;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rim-btn:hover:not(:disabled) {
+  background: #111827;
+}
+
+.rim-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.rim-btn:focus-visible {
+  outline: 2px solid #7e22ce;
+  outline-offset: 2px;
+}
+
+/* Only the middle scrolls; title and actions stay in view. */
+.rim-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -22px;
+  padding: 0 22px 2px;
+}
+
+.rim-move {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #374151;
+}
+
+.rim-warn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
+
+/* The move's own steps, under the stage being entered. */
+.rim-steps {
+  list-style: none;
+  margin: 8px 0 2px 26px;
+  padding: 0 0 0 10px;
+  border-left: 2px solid #ede9fe;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rim-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: #374151;
+}
+
+.rim-step-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.rim-step-meta {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  color: #6b7280;
+}
+
+.rim-step-completed .rim-stage-icon { color: #16a34a; }
+.rim-step-failed .rim-stage-icon,
+.rim-step-failed .rim-step-meta { color: #dc2626; }
+.rim-step-warning .rim-step-meta { color: #b45309; }
+.rim-step-running .rim-step-label { font-weight: 600; color: #6b21a8; }
+.rim-step-queued,
+.rim-step-skipped { color: #9ca3af; }
+
+.rim-step .rim-stage-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Shown on the assessment page while a closed dialog's move runs on. */
+.stage-move-note {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  margin: 0 0 12px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid #ddd6fe;
+  background: #f5f3ff;
+  color: #6b21a8;
+  font-size: 13px;
+}
