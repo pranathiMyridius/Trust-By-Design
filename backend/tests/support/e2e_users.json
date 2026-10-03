@@ -1,0 +1,86 @@
+{
+  "_comment": "Test-only accounts seeded into the throwaway E2E database by tests/e2e_server.py. Never used outside that database.",
+  "admin": {
+    "email": "admin@example.com",
+    "password": "E2E-Admin-Test-Only-1",
+    "role": "ADMIN"
+  },
+  "manager": {
+    "email": "manager@e2e.test",
+    "password": "E2E-Manager-Test-Only-1",
+    "role": "MANAGER",
+    "full_name": "Morgan Manager"
+  },
+  "owner": {
+    "email": "owner@e2e.test",
+    "password": "E2E-Owner-Test-Only-1",
+    "role": "BUSINESS_USER",
+    "full_name": "Olive Owner"
+  },
+  "analyst": {
+    "email": "analyst@e2e.test",
+    "password": "E2E-Analyst-Test-Only-1",
+    "role": "FCRM_ANALYST",
+    "full_name": "Ari Analyst"
+  },
+  "committee": {
+    "email": "committee@e2e.test",
+    "password": "E2E-Committee-Test-Only-1",
+    "role": "COMMITTEE_MEMBER",
+    "full_name": "Cleo Committee"
+  },
+  "reviewer": {
+    "email": "reviewer@e2e.test",
+    "password": "E2E-Reviewer-Test-Only-1",
+    "role": "FCRM_ANALYST",
+    "full_name": "Rae Reviewer",
+    "designations": [
+      "SENIOR_ANALYST",
+      "QA_REVIEWER",
+      "CHALLENGE_REVIEWER"
+    ]
+  },
+  "head": {
+    "email": "head@e2e.test",
+    "password": "E2E-Head-Test-Only-1",
+    "role": "MANAGER",
+    "full_name": "Hana Head",
+    "designations": [
+      "HEAD_OF_FCRM",
+      "FCRM_GOVERNANCE_OWNER"
+    ]
+  },
+  "chair": {
+    "email": "chair@e2e.test",
+    "password": "E2E-Chair-Test-Only-1",
+    "role": "COMMITTEE_MEMBER",
+    "full_name": "Chao Chair",
+    "designations": [
+      "COMMITTEE_CHAIR"
+    ]
+  },
+  "dualadmin": {
+    "email": "dualadmin@e2e.test",
+    "password": "E2E-DualAdmin-Test-Only-1",
+    "role": "ADMIN",
+    "full_name": "Dana DualAdmin"
+  },
+  "fcrmrep": {
+    "email": "fcrmrep@e2e.test",
+    "password": "E2E-FcrmRep-Test-Only-1",
+    "role": "COMMITTEE_MEMBER",
+    "full_name": "Fay FcrmRep",
+    "designations": [
+      "COMMITTEE_FCRM_COMPLIANCE_REP"
+    ]
+  },
+  "businessrep": {
+    "email": "businessrep@e2e.test",
+    "password": "E2E-BusinessRep-Test-Only-1",
+    "role": "COMMITTEE_MEMBER",
+    "full_name": "Bo BusinessRep",
+    "designations": [
+      "COMMITTEE_BUSINESS_RISK_REP"
+    ]
+  }
+}
