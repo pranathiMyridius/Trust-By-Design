@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: raw_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: raw
+      POSTGRES_PASSWORD: raw
+      POSTGRES_DB: risk_assessment
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raw -d risk_assessment"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

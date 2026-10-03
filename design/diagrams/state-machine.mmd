@@ -1,0 +1,39 @@
+%% Diagram 7 - Assessment state machine (pipeline status)
+stateDiagram-v2
+  [*] --> INTAKE: create (draft or submitted)
+  INTAKE --> EVIDENCE_COLLECTION: submit / complete intake
+  INTAKE --> CLOSED: withdraw
+  INTAKE --> RISK_IDENTIFICATION: fast path
+  EVIDENCE_COLLECTION --> CLOSED: admin close
+  EVIDENCE_COLLECTION --> RISK_IDENTIFICATION: analysis run succeeded or degraded
+  EVIDENCE_COLLECTION --> EVIDENCE_COLLECTION: run failed or unavailable, status unchanged
+  RISK_IDENTIFICATION --> INHERENT_RISK_ASSESSMENT: all factors rated, degraded acknowledged
+  INHERENT_RISK_ASSESSMENT --> CONTROL_ASSESSMENT: inherent frozen
+  CONTROL_ASSESSMENT --> RESIDUAL_RISK: controls mapped or gaps accepted
+  RESIDUAL_RISK --> HUMAN_REVIEW: residual frozen, draft generated
+  HUMAN_REVIEW --> SUBMITTED_TO_MANAGER: owner submits
+  SUBMITTED_TO_MANAGER --> READY_FOR_COMMITTEE: manager approves
+  SUBMITTED_TO_MANAGER --> RETURNED_BY_MANAGER: manager returns
+  SUBMITTED_TO_MANAGER --> MANAGER_REJECTED: manager rejects
+  RETURNED_BY_MANAGER --> SUBMITTED_TO_MANAGER: owner resubmits
+  READY_FOR_COMMITTEE --> COMMITTEE_REVIEW: first vote
+  COMMITTEE_REVIEW --> APPROVED
+  COMMITTEE_REVIEW --> APPROVED_WITH_CONDITIONS
+  COMMITTEE_REVIEW --> DEFERRED
+  COMMITTEE_REVIEW --> REJECTED
+  DEFERRED --> COMMITTEE_REVIEW: reopened
+  APPROVED --> CLOSED: no open actions
+  APPROVED_WITH_CONDITIONS --> CLOSED: conditions done
+  REJECTED --> CLOSED
+  MANAGER_REJECTED --> CLOSED
+  APPROVED --> REMEDIATION: committee amends
+  APPROVED_WITH_CONDITIONS --> REMEDIATION: committee amends
+  REJECTED --> REMEDIATION: committee amends
+  MANAGER_REJECTED --> REMEDIATION: committee amends
+  REMEDIATION --> INTAKE
+  REMEDIATION --> RISK_IDENTIFICATION: re-run analysis
+  CLOSED --> [*]
+
+  state "INFORMATION_REQUESTED (from any active stage, returns to previous)" as INFO
+  HUMAN_REVIEW --> INFO: request info
+  INFO --> HUMAN_REVIEW: response provided

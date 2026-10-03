@@ -1,0 +1,26 @@
+%% Diagram 1 - System Context
+flowchart LR
+  BU["Business requester<br/>BUSINESS_USER"]
+  AN["FCRM analyst<br/>FCRM_ANALYST"]
+  MG["Line manager<br/>MANAGER"]
+  CM["Risk committee<br/>COMMITTEE_MEMBER"]
+  AD["Administrator / auditor<br/>ADMIN"]
+
+  subgraph SYS["Financial Crime Risk Assessment Workbench"]
+    WB["Web app + API<br/>AI proposes - rules decide - people approve"]
+  end
+
+  OR[("OpenRouter<br/>LLM gateway, pinned model")]
+  NE[("Neon PostgreSQL<br/>+ pgvector")]
+  LF[("Langfuse<br/>optional tracing")]
+  RD[["FATF / EU high-risk lists<br/>bundled, attested snapshots"]]
+
+  BU -->|"create request, upload documents, answer info requests"| WB
+  AN -->|"confirm profile, run analysis, rate factors, assess controls"| WB
+  MG -->|"approve / return / reject"| WB
+  CM -->|"vote, decide, set conditions"| WB
+  AD -->|"users, methodology, reference data, audit export"| WB
+  WB -->|"masked prompts over HTTPS"| OR
+  WB -->|"SQL over TLS"| NE
+  WB -.->|"spans, no content by default"| LF
+  RD -->|"loaded + attested by admin"| WB

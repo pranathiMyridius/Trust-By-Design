@@ -1,0 +1,26 @@
+%% Diagram 6 - Risk scoring flow (engine 1.0.0)
+flowchart TD
+  AIF["AI factor proposals<br/>applicable, indicators, quotes"] --> EV["Evidence verification<br/>accepted indicators only"]
+  EV --> F["Risk factors<br/>eligible = applicable, not excluded, not mitigant"]
+  AR["Analyst rating L x I<br/>AI suggestion shown, not used"] --> F
+  F --> FS["Factor score = L x I / 25 x 100"]
+  FS --> WA["Inherent score = sum score x w / sum w<br/>rated factors only"]
+  MET[["Active methodology<br/>weights, bands, rules, grid<br/>version + fingerprint"]] --> WA
+  WA --> B{"Any eligible<br/>factor unrated?"}
+  B -->|"all unrated"| UR["Band UNRATED<br/>score None"]
+  B -->|"some"| PV["Band from score<br/>is_provisional = true"]
+  B -->|"none"| BD["Band from score<br/>LOW under 40, MEDIUM 40-59, HIGH 60-79, CRITICAL 80+"]
+  PV --> RU
+  BD --> RU["Escalation rules - approved only<br/>SANCTIONS_EXPOSURE_001 to CRITICAL<br/>attested jurisdiction tiers"]
+  REF[["Attested FATF/EU snapshot"]] --> RU
+  RU --> OV{"Human override?"}
+  OV -->|"yes, reason, not below non-mitigable floor"| IB["Inherent band of record<br/>calculated value kept"]
+  OV -->|"no"| IB
+  CTRL["Control assessments<br/>EFFECTIVE 4, PARTIAL 2, else 0<br/>downgrade if no evidence"] --> CR["Control rating per factor<br/>overall = weakest"]
+  IB --> GRID["Residual grid lookup<br/>inherent band x control rating"]
+  CR --> GRID
+  GRID --> FL["Non-mitigable floors"]
+  FL --> RB["Residual band of record<br/>frozen before submission"]
+  IB --> CONF["Confidence HIGH / MEDIUM / LOW<br/>rating + evidence coverage, mode, conflicts"]
+  RB --> DR["Decision record<br/>SHA-256"]
+  CONF --> DR

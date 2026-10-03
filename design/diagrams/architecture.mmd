@@ -1,0 +1,25 @@
+%% Diagram 2 - High-Level Architecture
+flowchart TB
+  U["User browser"] --> FE["React + Vite + TS SPA<br/>react-router, typed API client"]
+  FE -->|"HTTPS JSON, Bearer JWT"| API
+
+  subgraph BE["FastAPI service - single deployable"]
+    API["Routers /api/*<br/>auth - visibility - permission matrix"]
+    SVC["Application services<br/>intake, workflow transitions, review, approvals, reports"]
+    JOB["Job runner<br/>processing_jobs, in-process pool"]
+    LG["LangGraph<br/>risk-identification workflow"]
+    AIG["AI gateway<br/>prompt registry, masking, metering, retry"]
+    ENG["Deterministic engines - pure functions<br/>evidence - scoring - controls - challenge"]
+    AUD["Audit service<br/>append-only"]
+    API --> SVC
+    SVC --> JOB --> LG
+    LG --> AIG
+    LG --> ENG
+    SVC --> ENG
+    SVC --> AUD
+  end
+
+  AIG -->|"HTTPS"| OR[("OpenRouter")]
+  SVC --> DB[("Neon PostgreSQL + pgvector")]
+  LG --> DB
+  AUD --> DB

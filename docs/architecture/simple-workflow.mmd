@@ -1,0 +1,49 @@
+flowchart TD
+    A([Business User logs in]) --> B[Create risk assessment<br/>product, service, change, countries]
+    B --> C{Mandatory fields complete?}
+    C -- No --> B
+    C -- Yes --> D[Submit - saved in PostgreSQL]
+
+    D --> E[Upload evidence documents]
+    E --> F{Owner confirmed business profile?}
+    F -- No --> E
+    F -- Yes --> G[Start AI risk identification]
+
+    G --> H[LangGraph workflow<br/>load data, gather context]
+    H --> I[[LLM: gpt-4.1-mini<br/>identifies financial crime risks]]
+    I --> J{AI call succeeded?}
+    J -- Yes --> K[Risks saved with verified evidence]
+    J -- No --> L[Rules-only result<br/>needs reviewer acknowledgement]
+    L --> K
+
+    K --> M[FCRM Analyst rates each risk<br/>likelihood x impact]
+    M --> N[Inherent risk, controls,<br/>residual risk calculated]
+    N --> O[FCRM review and challenge sign-off]
+    O --> P{Information missing?}
+    P -- Yes --> Q[Request info from owner] --> O
+    P -- No --> R[Owner submits to Manager]
+
+    R --> S{Manager decision}
+    S -- Return --> O
+    S -- Reject --> X[Rejected]
+    S -- Approve --> T[Committee review and votes]
+
+    T --> U{Committee decision}
+    U -- Defer --> T
+    U -- Reject --> X
+    U -- Approve / with conditions --> V[Approved<br/>decision record frozen]
+
+    V --> W[Close assessment<br/>after conditions completed]
+    X --> W
+    W --> Z[(Audit trail: every action logged)]
+
+    classDef user fill:#fff7ed,stroke:#c2410c
+    classDef ai fill:#f5f3ff,stroke:#6d28d9
+    classDef decision fill:#fefce8,stroke:#a16207
+    classDef good fill:#ecfdf5,stroke:#047857
+    classDef bad fill:#fef2f2,stroke:#b91c1c
+    class A,M,O,R user
+    class G,H,I,K,L ai
+    class C,F,J,P,S,U decision
+    class V,W good
+    class X bad

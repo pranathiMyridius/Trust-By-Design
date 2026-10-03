@@ -1,0 +1,142 @@
+%% Diagram 9 - Neon PostgreSQL ER diagram (core entities; new tables marked NEW)
+erDiagram
+  users ||--o{ assessments : owns
+  users ||--o{ users : manages
+  assessments ||--o{ assessments : "parent of reassessment"
+  assessments ||--o{ assessment_documents : has
+  assessments ||--o| assessment_intelligence : "profile"
+  assessment_documents ||--o{ document_embeddings : chunks
+  assessments ||--o{ analysis_runs : "NEW runs"
+  prompt_versions ||--o{ analysis_runs : "NEW prompt used"
+  processing_jobs ||--o| analysis_runs : executes
+  analysis_runs ||--o{ ai_usage_logs : "AI calls"
+  analysis_runs ||--o{ risk_factors : produces
+  assessments ||--o{ risk_factors : has
+  assessments ||--o{ inherent_risk_calculations : "versions"
+  risk_methodologies ||--o{ inherent_risk_calculations : "config snapshot"
+  assessments ||--o{ residual_risk_calculations : "versions"
+  risk_factors ||--o{ controls : "mitigated by"
+  controls ||--o{ control_assessments : "versions"
+  assessments ||--o{ control_gaps : has
+  assessments ||--o{ challenge_findings : has
+  assessments ||--o{ assessment_overrides : has
+  assessments ||--o{ assessment_comments : has
+  assessments ||--o{ assessment_drafts : "versions"
+  assessments ||--o{ committee_votes : has
+  assessments ||--o{ committee_conditions : has
+  committee_conditions ||--o{ action_items : tracks
+  assessments ||--o{ decision_records : "frozen"
+  assessments ||--o{ workflow_transitions : history
+  assessments ||--o{ audit_events : history
+  reference_data_snapshots ||--o{ country_risk : contains
+  users ||--o{ approval_delegations : delegates
+
+  assessments {
+    int id PK
+    string reference_id UK
+    string title
+    string change_type
+    string status "pipeline, authoritative"
+    string workflow_status "derived"
+    bool is_draft
+    int owner_id FK
+    int manager_id FK
+    float inherent_score
+    string inherent_risk_level
+    string residual_risk_level
+    string assessment_mode
+    string confidence_level "NEW"
+    int latest_analysis_run_id FK "NEW"
+    int lock_version "NEW"
+  }
+  analysis_runs {
+    int id PK
+    uuid run_uuid UK
+    int assessment_id FK
+    string run_type
+    string status
+    string workflow_version
+    int prompt_version_id FK
+    string requested_model
+    string response_model
+    string methodology_fingerprint
+    string input_sha256
+    text raw_output "masked"
+    string trace_id
+    int requested_by_id FK
+  }
+  prompt_versions {
+    int id PK
+    string prompt_key
+    string version
+    string template_sha256
+    text template_text
+  }
+  risk_factors {
+    int id PK
+    int assessment_id FK
+    int analysis_run_id FK "NEW"
+    string category
+    bool applicable
+    int likelihood
+    int impact
+    float score
+    string rating_source
+    text indicators "JSON"
+    text evidence "JSON quotes"
+    string evidence_status
+    text crime_typologies "NEW JSON"
+    string source "AI RULES MANUAL"
+    int version
+    bool is_current
+  }
+  inherent_risk_calculations {
+    int id PK
+    int assessment_id FK
+    string methodology_fingerprint
+    string scoring_engine_version "NEW"
+    text inputs "JSON snapshot"
+    float final_score
+    string risk_band
+    bool is_provisional
+    text triggered_rules "JSON"
+    string confidence_level "NEW"
+    float override_value
+    string override_band
+    int version
+    bool is_current
+  }
+  residual_risk_calculations {
+    int id PK
+    int assessment_id FK
+    string control_rating
+    string residual_band
+    text floors_applied "JSON"
+    bool frozen
+  }
+  assessment_overrides {
+    int id PK
+    int assessment_id FK
+    string section
+    string field_name
+    text ai_value
+    text human_value
+    text reason
+    int overridden_by_id FK
+  }
+  decision_records {
+    int id PK
+    int assessment_id FK
+    string decision
+    text record "frozen JSON"
+    string checksum "sha256"
+  }
+  audit_events {
+    int id PK
+    int assessment_id FK
+    string action
+    int actor_id FK
+    string request_id "NEW"
+    int analysis_run_id FK "NEW"
+    text details
+  }

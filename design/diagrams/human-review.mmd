@@ -1,0 +1,29 @@
+%% Diagram 8 - Human review workflow
+flowchart TD
+  A["Analysis complete<br/>factors UNRATED"] --> B["Analyst reviews each factor<br/>evidence, AI inference, missing info"]
+  B --> C{"Agree with<br/>applicability?"}
+  C -->|"no"| C1["Exclude with reason<br/>or add manual factor"]
+  C -->|"yes"| D["Rate L x I<br/>AI suggestion side by side"]
+  C1 --> D
+  D --> D1{"Differs from<br/>AI suggestion?"}
+  D1 -->|"yes"| D2["Reason required<br/>rating_source ANALYST_OVERRIDE"]
+  D1 -->|"no"| D3["rating_source ANALYST_CONFIRMED"]
+  D2 --> E
+  D3 --> E["Inherent recalculated<br/>new calc version, audit before/after"]
+  E --> F{"Override band?"}
+  F -->|"yes"| F1["Override: reason 20+ chars<br/>not below non-mitigable floor<br/>downward creates HIGH finding"]
+  F -->|"no"| G
+  F1 --> G["Controls, residual frozen, draft generated"]
+  G --> H["Challenge findings<br/>resolve or accept with reason"]
+  H --> I{"Missing information?"}
+  I -->|"yes"| I1["Request information<br/>owner responds, status returns"]
+  I1 --> B
+  I -->|"no"| J["Review checklist complete<br/>owner submits to manager"]
+  J --> K{"Manager decision"}
+  K -->|"return + reason"| B
+  K -->|"reject + reason"| KR["MANAGER_REJECTED - locked"]
+  K -->|"approve - gates met"| L["Committee votes"]
+  L --> M{"Committee decision + rationale"}
+  M -->|"defer"| L
+  M -->|"approve / with conditions / reject"| N["Decision record frozen<br/>conditions become action items"]
+  N --> O["Audit history + export"]

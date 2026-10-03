@@ -1,0 +1,48 @@
+%% Diagram 5 - Assessment sequence (create to decision)
+sequenceDiagram
+  autonumber
+  actor BU as Business user
+  actor AN as FCRM analyst
+  actor MG as Manager
+  actor CM as Committee
+  participant FE as React SPA
+  participant API as FastAPI
+  participant JOB as Job runner
+  participant LG as LangGraph
+  participant LLM as OpenRouter
+  participant DB as Neon Postgres
+
+  BU->>FE: Fill intake, Submit
+  FE->>API: POST /api/assessments
+  API->>DB: insert assessment, transition CREATED, audit
+  API-->>FE: 201 AssessmentResponse
+  AN->>FE: Confirm profile
+  FE->>API: POST /intelligence/confirm
+  AN->>FE: Run risk identification
+  FE->>API: POST /analyze-async
+  API->>DB: insert processing_job + analysis_run QUEUED
+  API-->>FE: 202 job id
+  API->>JOB: enqueue
+  JOB->>LG: invoke(run_id)
+  LG->>DB: load context, attested reference data
+  LG->>LLM: masked prompt v2.0.0, pinned model
+  LLM-->>LG: JSON factors, no scores
+  LG->>LG: verify_evidence, tag, score_provisional
+  LG->>DB: supersede factors, calc, finish run, transition to RISK_IDENTIFICATION
+  loop every 1-2 s until finished
+    FE->>API: GET /processing-jobs/{id}
+    API-->>FE: progress, stage_key
+  end
+  AN->>FE: Rate each factor L x I
+  FE->>API: PATCH /risk-factors/{fid}/rating
+  API->>DB: factor version, inherent calc version, audit before/after
+  AN->>FE: Map and assess controls, freeze residual, accept draft
+  BU->>FE: Submit to manager
+  FE->>API: POST /submit-to-manager
+  MG->>FE: Approve
+  FE->>API: POST /manager-decision
+  API->>DB: gates checked, transition READY_FOR_COMMITTEE
+  CM->>FE: Vote, then decide
+  FE->>API: POST /committee-votes, POST /committee-decision
+  API->>DB: transition APPROVED, conditions, action items, decision_record + checksum
+  API-->>FE: 200 decision recorded

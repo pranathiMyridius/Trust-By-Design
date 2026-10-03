@@ -1,0 +1,374 @@
+/*
+ * Stage 19 (Non-Functional Requirements): processing status, the
+ * explainability panel and the System Health page. State is always
+ * conveyed by text and a symbol as well as colour.
+ */
+
+/* --- Background processing status ------------------------------------- */
+
+.processing-status {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  font-size: 0.9rem;
+  background: var(--bg);
+}
+
+.processing-status--queued,
+.processing-status--running {
+  border-left-color: #2563eb;
+}
+
+.processing-status--succeeded {
+  border-left-color: #15803d;
+}
+
+.processing-status--partial {
+  border-left-color: #b45309;
+  border-left-style: dashed;
+}
+
+.processing-status--failed {
+  border-left-color: #b91c1c;
+  border-left-style: double;
+  border-left-width: 6px;
+}
+
+.processing-status__header {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  color: var(--text-h);
+}
+
+.processing-status__icon {
+  font-weight: 700;
+}
+
+.processing-status__step {
+  color: var(--text);
+}
+
+.processing-status__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+  margin: 8px 0 4px;
+}
+
+.processing-status__bar > span {
+  display: block;
+  height: 100%;
+  background: #2563eb;
+  transition: width 0.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .processing-status__bar > span {
+    transition: none;
+  }
+}
+
+.processing-status__hint,
+.processing-status__poll-error {
+  margin: 4px 0;
+  font-size: 0.85rem;
+}
+
+.processing-status__poll-error {
+  color: #b45309;
+}
+
+.processing-status__error p,
+.processing-status__incomplete p {
+  margin: 6px 0;
+  color: var(--text-h);
+}
+
+.processing-status__incomplete ul {
+  margin: 4px 0 6px 18px;
+  padding: 0;
+}
+
+.processing-status__detail {
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  background: var(--code-bg);
+  padding: 8px;
+  border-radius: 6px;
+  max-height: 160px;
+  overflow: auto;
+}
+
+/* --- Explainability --------------------------------------------------- */
+
+.explain-panel h3 {
+  margin-top: 0;
+}
+
+.explain-notice,
+.explain-pending,
+.recommendation-notice {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+.explain-pending {
+  background: rgba(180, 83, 9, 0.08);
+}
+
+.explain-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 8px;
+}
+
+.explain-tab {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.explain-tab[aria-selected="true"] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.explain-help,
+.explain-empty {
+  font-size: 0.9rem;
+}
+
+.explain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.explain-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.explain-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.explain-kind {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-h);
+}
+
+.explain-tag {
+  font-size: 0.75rem;
+  border-radius: 999px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+}
+
+.explain-tag--pending {
+  border-style: dashed;
+  border-color: #b45309;
+}
+
+.explain-tag--reviewed {
+  border-color: #15803d;
+}
+
+.explain-item__text {
+  margin: 6px 0 4px;
+  color: var(--text-h);
+}
+
+.explain-item__trace {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.explain-error {
+  color: #b91c1c;
+}
+
+/* --- System Health ---------------------------------------------------- */
+
+.nfr-page {
+  display: grid;
+  gap: 16px;
+}
+
+.nfr-section h3 {
+  margin-top: 0;
+}
+
+.nfr-banner {
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  color: var(--text-h);
+}
+
+.nfr-banner--error {
+  border-left: 5px double #b91c1c;
+}
+
+.nfr-banner--ok {
+  border-left: 4px solid #15803d;
+}
+
+.nfr-check {
+  font-weight: 600;
+}
+
+.nfr-check--ok {
+  color: #15803d;
+}
+
+.nfr-check--warn {
+  color: #b45309;
+}
+
+.nfr-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+
+.nfr-facts dt {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nfr-facts dd {
+  margin: 2px 0 0;
+  color: var(--text-h);
+}
+
+.nfr-table-scroll {
+  overflow-x: auto;
+}
+
+.nfr-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.nfr-table th,
+.nfr-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.nfr-table thead th {
+  color: var(--text-h);
+}
+
+.nfr-muted {
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.nfr-problems {
+  margin: 4px 0 0 18px;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.nfr-checklist {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+/* --- Assessment list filters ------------------------------------------ */
+
+.org-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.org-filters label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.pager {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .nfr-check--ok,
+  .explain-tag--reviewed {
+    color: #4ade80;
+  }
+
+  .nfr-check--warn,
+  .processing-status__poll-error {
+    color: #fbbf24;
+  }
+
+  .explain-error {
+    color: #f87171;
+  }
+}
+
+.parsed-badge.processing-badge--running {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.parsed-badge.processing-badge--partial {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px dashed #b45309;
+}
+
+.parsed-badge.processing-badge--failed {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 2px double #b91c1c;
+}
+
+.recommendation-notice {
+  margin: 4px 0 8px;
+}

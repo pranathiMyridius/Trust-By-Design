@@ -1,0 +1,22 @@
+%% Diagram 4 - LangGraph AI Workflow (risk_identification v2.0.0)
+flowchart TD
+  S([START: run_id, assessment_id]) --> V
+  V["validate_input<br/>Python - mandatory fields, profile confirmed, sources present"]
+  V -->|"blocking issues"| X(["END: INPUT_INCOMPLETE<br/>no LLM call, run FAILED"])
+  V -->|ok| L["load_context<br/>Python + DB - masked assessment, evidence sources,<br/>attested FATF/EU matches, methodology, similar cases"]
+  L --> I["identify_risks<br/>LLM - 10 categories, indicators, verbatim quotes,<br/>missing info, rationale, misuse, typologies<br/>NO scores"]
+  I -->|"AIProviderError and fallback enabled"| RF["rules_fallback<br/>Python RiskEngine - unrated, NOT_VERIFIED"]
+  I -->|"other error or fallback disabled"| UN(["END: UNAVAILABLE<br/>nothing overwritten"])
+  I -->|ok| E["verify_evidence<br/>Python - exact normalised match, 12+ chars,<br/>sanctions topic cues, reject unsupported indicators"]
+  E --> T["tag_and_aggregate<br/>Python - canonical 10 factors, fill omitted,<br/>deterministic typology tags"]
+  RF --> T
+  T --> P["score_provisional<br/>Python - calculate_inherent_risk, all unrated<br/>UNRATED unless approved rule fires"]
+  P --> W["persist_run<br/>DB transaction - supersede AI/RULES factors,<br/>recalc inherent, finish analysis_run, audit ANALYSIS"]
+  W --> Z([END: SUCCEEDED or DEGRADED])
+
+  classDef llm fill:#fde68a,stroke:#b45309,color:#111;
+  classDef det fill:#dbeafe,stroke:#1d4ed8,color:#111;
+  classDef db fill:#dcfce7,stroke:#15803d,color:#111;
+  class I llm;
+  class V,L,E,T,P,RF det;
+  class W db;

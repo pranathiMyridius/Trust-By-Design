@@ -1,0 +1,405 @@
+%%{init: {"theme": "base", "flowchart": {"curve": "basis", "nodeSpacing": 38, "rankSpacing": 52, "htmlLabels": true, "padding": 12}, "themeVariables": {"fontFamily": "Segoe UI, Helvetica, Arial, sans-serif", "fontSize": "14px", "primaryColor": "#ffffff", "lineColor": "#475569", "clusterBkg": "#f8fafc", "clusterBorder": "#94a3b8"}}}%%
+%% Financial Crime Risk Assessment Workbench - complete architecture and end-to-end workflow
+%% Source of truth: backend/app (FastAPI, LangGraph, services, models), alembic/versions 0001-0022, frontend/src
+%% Edge legend: blue = frontend REST request | slate = backend processing | purple = AI / LLM call
+%%              green dotted = database read/write | orange = human action or decision | grey dashed = audit write | red = error / refusal
+%% Node legend: dashed border = optional or supported-but-inactive component; red node = error / refusal path; "provisional" in a label = implemented on policy pending governance approval
+flowchart TD
+
+subgraph ACT["USERS AND REVIEWERS - role-based access (UserRole)"]
+  direction LR
+  U_BIZ(["Business User<br/>assessment owner"])
+  U_FCRM(["FCRM Analyst"])
+  U_MGR(["Assigned Manager<br/>or active delegate"])
+  U_COM(["Committee Member<br/>incl. Committee Chair"])
+  U_RO(["Auditor / Executive<br/>read-only"])
+  U_ADM(["Admin / Policy Admin"])
+end
+
+subgraph FE["FRONTEND - React 19 + TypeScript + Vite SPA"]
+  direction LR
+  FE_LOGIN["LoginPage + AuthContext<br/>JWT kept in localStorage"]
+  FE_CREATE["CreateAssessment<br/>manual form or document upload"]
+  FE_WF["AssessmentWorkflow + StageTracker<br/>polls GET /api/processing-jobs/{id}"]
+  FE_QUEUE["WorkQueue, Approvals,<br/>Dashboard pages"]
+  FE_AUDIT["AuditHistory, DecisionPackage,<br/>Reports pages"]
+  FE_HTTP["api/*.ts authFetch()<br/>REST + Authorization: Bearer JWT"]
+end
+
+subgraph BE["BACKEND - Python FastAPI"]
+  subgraph GW["REST API layer, authentication and authorization"]
+    API_MW["Middleware: SecurityHeaders, CORS,<br/>RequestTiming, AdminAudit,<br/>optional HTTPS redirect"]
+    API_LOGIN["POST /api/auth/login<br/>bcrypt check, HS256 JWT issued"]
+    API_AUTHZ{"JWT valid and role,<br/>object visibility and entity<br/>scope allowed?"}
+    API_DENY["401 / 403 refused<br/>ACCESS_DENIED logged"]
+    API_ROUTERS["Routers: assessments, workflow, approvals,<br/>controls, challenge-review, processing-jobs,<br/>audit-trail, reports, reassessment"]
+  end
+  subgraph SVC["Assessment services and business logic"]
+    SVC_WF["Workflow state machine services/workflow.py<br/>TRANSITIONS role matrix, guards, SLA dates<br/>every status move uses transition()"]
+    SVC_READY["Governance readiness evaluate()<br/>residual, comments, findings, sign-off,<br/>overrides, SoD conflicts"]
+    SVC_JOBS["ProcessingJob service<br/>in-process ThreadPoolExecutor,<br/>progress stage log, retry"]
+    SVC_SCORE["Deterministic risk engine<br/>likelihood x impact, weights, bands,<br/>escalation rules, residual grid"]
+    SVC_ESC["Background escalation loop<br/>overdue assessments and action items"]
+  end
+  subgraph P1["1 - BUSINESS INTAKE"]
+    I1["POST /api/assessments<br/>product, service, change type, business unit,<br/>countries, channels, transactions, vendors"]
+    I1D["POST /analyze-document then<br/>/create-with-document<br/>AI pre-fills intake fields"]
+    I2{"Submitting and all<br/>mandatory fields complete?"}
+    I2X["422 Missing mandatory information<br/>or kept as Draft"]
+    I3["Persist assessment, reference_id,<br/>intake snapshot, triage priority,<br/>routing queue"]
+    I4["Status INTAKE<br/>workflow DRAFT to SUBMITTED<br/>POST /workflow/submit for drafts"]
+  end
+  subgraph P2["2 - EVIDENCE REVIEW"]
+    E1["POST /advance-stage-async<br/>INTAKE to EVIDENCE_COLLECTION"]
+    E1D{"Title, description<br/>and evidence present?"}
+    E1X["400 Still a draft<br/>complete intake first"]
+    E2["POST /{id}/documents<br/>DOCX, PDF, XLSX, TXT, CSV, ZIP<br/>type and size checks, text extraction"]
+    E3["Encrypted file storage<br/>+ document embeddings"]
+    E4["Structured business profile<br/>AssessmentIntelligence<br/>GET /evidence-gaps, /consistency-check"]
+    E5{"Owner confirmed profile?<br/>POST /intelligence/confirm"}
+    E5X["400 PROFILE_NOT_CONFIRMED<br/>workflow INTAKE_VALIDATION"]
+    E6{"Expired documents<br/>acknowledged or excluded?"}
+    E6X["Blocked: POST /documents/{id}/<br/>expiry-acknowledgement"]
+    E7["Workflow EVIDENCE_REVIEW<br/>inputs ready for AI analysis"]
+  end
+end
+
+subgraph AIW["3 - AI RISK IDENTIFICATION - LangGraph orchestration"]
+  A0["POST /advance-stage-async<br/>EVIDENCE_COLLECTION to RISK_IDENTIFICATION<br/>or POST /analyze-async - pipeline roles"]
+  A1["run_risk_assessment_workflow()<br/>AI metering context,<br/>optional Langfuse trace"]
+  subgraph LG["LangGraph StateGraph - RiskAssessmentState"]
+    LG0(("START"))
+    LG1[["load_assessment"]]
+    LG2[["gather_intelligence<br/>confirmed business profile"]]
+    LG3[["identify_risks"]]
+    LG4[["calculate_scores<br/>calculate_inherent_risk()<br/>skipped when unavailable"]]
+    LG5[["persist_results<br/>versioned risk factors, score,<br/>analysis mode, audit event"]]
+    LG9(("END"))
+  end
+  subgraph IR["identify_risks node internals"]
+    R1["Prepare AI context: intake fields, usable<br/>current documents, evidence sources,<br/>similar cases via pgvector - Postgres only"]
+    R2["identify_risk_factors() prompt<br/>10 canonical financial crime<br/>risk categories, JSON mode"]
+    R3{"LLM call succeeded?<br/>retry on 408, 429, 5xx"}
+    R4["Validate JSON, verify each quote<br/>verbatim against its source<br/>sets evidence_status per factor"]
+    R5["Apply Stage 4 deterministic rules<br/>signals marked provisional"]
+    R6{"Operational AI failure<br/>and rules fallback OK?"}
+    R7["Mode rules_only<br/>deterministic RiskEngine,<br/>provisional, needs acknowledgement"]
+    R8["Mode unavailable<br/>no rating written"]
+  end
+  subgraph LLMP["CONFIGURED LLM PROVIDER - app/ai/provider.py"]
+    LLM1{{"OpenAI chat completions<br/>gpt-4.1-mini, LLM_PROVIDER=openai"}}
+    LLM2{{"OpenAI embeddings<br/>text-embedding-3-small, 1536-d"}}
+    LLM3{{"OpenRouter - supported alternative,<br/>not active in backend/.env"}}
+  end
+  METER["metered_post()<br/>all outbound AI calls"]
+  A2["record_ai_run() to<br/>ai_evaluation_records - best effort"]
+  A3{"Workflow raised<br/>an exception?"}
+  A4["Rollback, HTTP 500 or job FAILED<br/>POST /processing-jobs/{id}/retry"]
+  A5["Transition to RISK_IDENTIFICATION<br/>STAGE_ADVANCED audit,<br/>workflow RISK_ASSESSMENT_IN_PROGRESS"]
+end
+
+
+subgraph XAI["OTHER AI-ASSISTED STEPS - outside LangGraph, same provider via metered_post()"]
+  X1["Document field extraction<br/>document_analysis/ai_extractor"]
+  X2["Likelihood x impact suggestions<br/>POST /risk-factors/suggest-ratings"]
+  X3["Control identification and<br/>control design assessment"]
+  X4["Assessment draft narrative<br/>assessment_draft_generator"]
+end
+
+subgraph HRA["HUMAN REVIEW AND APPROVAL"]
+  subgraph P4["4 - HUMAN RISK RATING - FCRM Analyst, Manager or Admin"]
+    H1{"Result provisional<br/>rules_only?"}
+    H2["POST /acknowledge-degraded<br/>or re-run risk identification"]
+    H3["Analyst rates each applicable factor<br/>PATCH /risk-factors/{id}/rating<br/>add, exclude factors, edit indicators"]
+    H4{"Rating equals<br/>AI suggestion?"}
+    H5["Reason required<br/>ANALYST_OVERRIDE ledger entry"]
+    H6{"All applicable<br/>factors rated?"}
+    H7["INHERENT_RISK_ASSESSMENT<br/>inherent score and band frozen,<br/>optional documented override"]
+    H8["CONTROL_ASSESSMENT<br/>AI-proposed controls per factor,<br/>analyst assesses controls"]
+    H9{"Control outcome recorded<br/>and residual band determined?"}
+    H10["RESIDUAL_RISK frozen<br/>inherent band x control rating grid<br/>recommended conditions, residual confirm"]
+    H11["Advance to HUMAN_REVIEW<br/>AI draft narrative generated"]
+  end
+  subgraph P5["5 - FCRM REVIEW - workflow ANALYST_REVIEW"]
+    F1["PATCH /fcrm-review<br/>justification and human severity<br/>reconciliation per risk result"]
+    F2{"Human rating differs<br/>from calculated?"}
+    F3["Justification mandatory<br/>FCRM_REVIEW override ledger entry"]
+    F4["Review comments, challenge findings<br/>resolve or accept with reason"]
+    F5["Independent challenge-review sign-off<br/>refused while HIGH or CRITICAL open"]
+    F6{"More information<br/>needed?"}
+    F7["POST /request-information<br/>status INFORMATION_REQUESTED"]
+    F8["Owner POST /provide-information<br/>resumes previous status"]
+    F9["Owner POST /submit-to-manager<br/>SUBMITTED_TO_MANAGER<br/>workflow CHALLENGE_REVIEW"]
+  end
+  subgraph P6["6 - MANAGER APPROVAL"]
+    M1["Manager reviews assessment and FCRM review<br/>SoD: not own submission, Admin cannot<br/>substitute, delegation authority resolved"]
+    M2{"POST /manager-decision"}
+    M3{"Approval gates met?<br/>comments resolved, inherent final,<br/>committee readiness"}
+    M3X["400 / 409 blockers returned"]
+    M4["READY_FOR_COMMITTEE<br/>MANAGER_APPROVED"]
+    M5["RETURNED_BY_MANAGER<br/>workflow AMENDMENT_REQUIRED<br/>sign-off superseded"]
+    M6["MANAGER_REJECTED<br/>workflow REJECTED"]
+  end
+  subgraph P7["7 - COMMITTEE DECISION - applies to every risk level"]
+    K1["POST /workflow/open-committee-review<br/>or first vote: COMMITTEE_REVIEW"]
+    K2["POST /committee-votes<br/>one current vote per seat,<br/>append-only re-cast with reason"]
+    K3{"POST /committee-decision"}
+    K4{"Decision record complete and<br/>FINAL_DECISION readiness met?"}
+    K4X["400 / 409 decision blocked"]
+    K5["DEFERRED<br/>returns to committee review"]
+  end
+  subgraph P8["8 - FINAL DECISION"]
+    FD1["Outcome stored on assessment<br/>APPROVED, APPROVED_WITH_CONDITIONS,<br/>REJECTED with rationale and decider"]
+    FD2{"Approved?"}
+    FD3["freeze_decision_record()<br/>JSON snapshot + checksum,<br/>decision lock"]
+    FD4["Committee conditions become<br/>action items with owner, due date,<br/>closure approval"]
+    FD5{"Open action items<br/>or conditions?"}
+    FD6["POST /workflow/close<br/>status CLOSED"]
+    FD7["POST /amend - Committee or Admin<br/>REMEDIATION, then re-enters<br/>Phase 1 INTAKE"]
+    FD8["Reassessment triggers<br/>child assessment supersedes parent<br/>on approval"]
+  end
+end
+
+subgraph DB["DATABASE - PostgreSQL on Neon + pgvector, SQLAlchemy 2, Alembic 0001 to 0022"]
+  direction LR
+  DB_CORE[("assessments, users,<br/>assessment_intelligence,<br/>intake_snapshots, assessment_documents")]
+  DB_VEC[("document_embeddings<br/>pgvector")]
+  DB_RISK[("risk_factors, risk_results,<br/>inherent / residual_risk_calculations,<br/>controls, processing_jobs")]
+  DB_REV[("assessment_fcrm_reviews, comments,<br/>challenge_findings, signoffs,<br/>assessment_overrides")]
+  DB_GOV[("committee_votes, committee_conditions,<br/>action_items, decision_records,<br/>approval_delegations, sod_exceptions")]
+  DB_AUD[("audit_events, workflow_transitions,<br/>ai_usage_logs, ai_evaluation_records")]
+  DB_FILES[("Encrypted upload files<br/>FILE_ENCRYPTION_KEY")]
+end
+
+subgraph AUD["9 - AUDIT TRAIL AND OBSERVABILITY"]
+  direction LR
+  AU1>"log_audit_event() to audit_events<br/>CREATED, ANALYSIS, AI_ANALYSIS_DEGRADED,<br/>STAGE_ADVANCED, OVERRIDE_APPLIED,<br/>MANAGER_*, COMMITTEE_*, ASSESSMENT_CLOSED"]
+  AU2>"workflow_transitions<br/>from / to status, actor, reason"]
+  AU3>"Override ledger<br/>AI value vs human value + reason"]
+  AU4>"AI usage log<br/>model, tokens, cost, latency, outcome"]
+  AU5>"Frozen decision records<br/>and vote history"]
+  AU6>"AdminAudit middleware,<br/>ACCESS_DENIED, request timing"]
+  AU7>"Langfuse tracing - optional,<br/>not configured in backend/.env"]
+  AU8["GET /audit, /audit/all, /audit-export,<br/>/explain - retention and legal holds<br/>on provisional policy"]
+end
+
+%% ---------------- edges ----------------
+U_BIZ -->|"sign in"| FE_LOGIN
+U_FCRM --> FE_LOGIN
+U_MGR --> FE_LOGIN
+U_COM --> FE_LOGIN
+U_ADM --> FE_LOGIN
+U_BIZ -->|"create assessment"| FE_CREATE
+U_RO -->|"inspect history"| FE_AUDIT
+FE_LOGIN -->|"credentials, JWT returned"| API_LOGIN
+FE_LOGIN -->|"token"| FE_HTTP
+FE_CREATE --> FE_HTTP
+FE_WF --> FE_HTTP
+FE_QUEUE --> FE_HTTP
+FE_AUDIT --> FE_HTTP
+FE_HTTP -->|"every REST call"| API_MW
+API_MW --> API_AUTHZ
+API_AUTHZ -->|"no"| API_DENY
+API_AUTHZ -->|"yes"| API_ROUTERS
+API_ROUTERS -->|"status moves"| SVC_WF
+API_MW -.-> AU6
+API_ROUTERS -->|"document route"| I1D
+API_ROUTERS -->|"manual route"| I1
+I1D -->|"extract fields"| X1
+I1D -->|"pre-filled form"| I1
+I1 --> I2
+I2 -->|"no"| I2X
+I2X -->|"complete fields"| I1
+I2 -->|"yes or draft"| I3
+I3 --> I4
+I3 -.->|"insert"| DB_CORE
+I3 -.->|"CREATED"| AU1
+I4 -->|"owner or analyst advances"| E1
+E1 --> E1D
+E1D -->|"no"| E1X
+E1X -->|"retry"| E1
+E1D -->|"yes"| E2
+E2 --> E3
+E3 -->|"embed"| LLM2
+E3 -.->|"files"| DB_FILES
+E3 -.->|"vectors"| DB_VEC
+E2 --> E4
+E4 --> E5
+E5 -->|"no"| E5X
+E5X -->|"owner reviews and confirms"| E4
+E5 -->|"yes"| E6
+E6 -->|"no"| E6X
+E6X -->|"acknowledge"| E6
+E6 -->|"yes"| E7
+E4 -.->|"profile"| DB_CORE
+E7 -->|"advance stage"| A0
+A0 -->|"202 + job id"| SVC_JOBS
+SVC_JOBS -->|"worker thread"| A1
+SVC_JOBS -.->|"job status"| DB_RISK
+A1 --> LG0
+LG0 --> LG1
+LG1 --> LG2
+LG2 --> LG3
+LG3 --> R1
+R1 --> R2
+R2 --> METER
+METER ==>|"HTTPS, JSON mode"| LLM1
+METER -.->|"if configured"| LLM3
+LLM1 ==>|"response"| R3
+R3 -->|"yes"| R4
+R4 --> R5
+R5 -->|"ai_assisted"| LG4
+R3 -->|"no"| R6
+R6 -->|"yes"| R7
+R6 -->|"no"| R8
+R7 -->|"rules_only"| LG4
+R8 -->|"unavailable"| LG4
+LG4 --> LG5
+LG5 --> LG9
+LG5 -.->|"write"| DB_RISK
+LG5 -.->|"ANALYSIS"| AU1
+LG9 --> A2
+A2 --> A3
+A3 -->|"yes"| A4
+A4 -->|"retry job"| A0
+A3 -->|"no"| A5
+METER -.->|"every call"| AU4
+A5 -->|"results shown in UI"| H1
+H1 -->|"yes"| H2
+H2 --> H3
+H1 -->|"no"| H3
+H3 -->|"optional suggestion"| X2
+H3 --> H4
+H4 -->|"differs"| H5
+H4 -->|"confirmed or none"| H6
+H5 --> H6
+H5 -.-> AU3
+H3 -.->|"ratings"| DB_RISK
+H6 -->|"no - 400"| H3
+H6 -->|"yes"| H7
+H7 --> H8
+H8 -->|"identify controls"| X3
+H8 --> H9
+H9 -->|"no - 400"| H8
+H9 -->|"yes"| H10
+H10 --> H11
+H11 -->|"draft"| X4
+H11 -->|"FCRM analyst reviews"| F1
+F1 --> F2
+F2 -->|"yes"| F3
+F2 -->|"no"| F4
+F3 --> F4
+F3 -.-> AU3
+F1 -.->|"review"| DB_REV
+F4 --> F5
+F5 --> F6
+F6 -->|"yes"| F7
+F7 --> F8
+F8 -->|"rework"| F1
+F6 -->|"no"| F9
+F9 --> M1
+M1 --> M2
+M2 -->|"approve"| M3
+M3 -->|"no"| M3X
+M3X -->|"resolve blockers"| F4
+M3 -->|"yes"| M4
+M2 -->|"return + comment"| M5
+M5 -->|"owner resubmits"| F9
+M2 -->|"reject + comment"| M6
+M4 --> K1
+K1 --> K2
+K2 -.->|"votes"| DB_GOV
+K2 --> K3
+K3 -->|"defer"| K5
+K5 --> K1
+K3 -->|"approve, approve with<br/>conditions, reject"| K4
+K4 -->|"no"| K4X
+K4 -->|"yes"| FD1
+M6 -->|"manager rejection"| FD1
+FD1 --> FD2
+FD2 -->|"yes"| FD3
+FD3 -->|"with conditions"| FD4
+FD3 --> FD5
+FD4 --> FD5
+FD2 -->|"no"| FD5
+FD5 -->|"yes - 409"| FD4
+FD5 -->|"no"| FD6
+FD2 -->|"amend"| FD7
+FD6 -->|"review date"| FD8
+FD3 -.->|"decision record"| DB_GOV
+FD3 -.-> AU5
+SVC_WF -.->|"every transition"| AU2
+A1 -.->|"trace"| AU7
+AU1 -.-> DB_AUD
+AU2 -.-> DB_AUD
+AU4 -.-> DB_AUD
+AU8 -.->|"read"| DB_AUD
+API_ROUTERS -->|"audit endpoints"| AU8
+
+%% ---------------- node styles ----------------
+classDef actor fill:#fff7ed,stroke:#c2410c,stroke-width:2px,color:#7c2d12
+classDef fe fill:#eff6ff,stroke:#1d4ed8,stroke-width:1.5px,color:#1e3a8a
+classDef api fill:#f1f5f9,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef svc fill:#f8fafc,stroke:#475569,stroke-width:1.5px,color:#0f172a
+classDef proc fill:#ffffff,stroke:#64748b,stroke-width:1.2px,color:#0f172a
+classDef decision fill:#fefce8,stroke:#a16207,stroke-width:1.5px,color:#422006
+classDef ai fill:#f5f3ff,stroke:#6d28d9,stroke-width:1.5px,color:#3b0764
+classDef lg fill:#ede9fe,stroke:#5b21b6,stroke-width:2px,color:#2e1065
+classDef llm fill:#faf5ff,stroke:#7e22ce,stroke-width:2.5px,color:#3b0764
+classDef alt fill:#faf5ff,stroke:#a78bfa,stroke-width:1.5px,stroke-dasharray:5 4,color:#6b21a8
+classDef human fill:#fff7ed,stroke:#ea580c,stroke-width:1.5px,color:#7c2d12
+classDef final fill:#ecfdf5,stroke:#047857,stroke-width:2px,color:#064e3b
+classDef db fill:#ecfdf5,stroke:#15803d,stroke-width:1.5px,color:#14532d
+classDef err fill:#fef2f2,stroke:#b91c1c,stroke-width:1.5px,color:#7f1d1d
+classDef audit fill:#f3f4f6,stroke:#4b5563,stroke-width:1.5px,color:#111827
+classDef optional fill:#f9fafb,stroke:#9ca3af,stroke-width:1.5px,stroke-dasharray:5 4,color:#4b5563
+classDef term fill:#334155,stroke:#0f172a,color:#ffffff
+
+class U_BIZ,U_FCRM,U_MGR,U_COM,U_RO,U_ADM actor
+class FE_LOGIN,FE_CREATE,FE_WF,FE_QUEUE,FE_AUDIT,FE_HTTP fe
+class API_MW,API_LOGIN,API_ROUTERS api
+class SVC_WF,SVC_READY,SVC_JOBS,SVC_SCORE,SVC_ESC svc
+class I1,I3,I4,E1,E2,E3,E4,E7,A0,A1,A2,A5 proc
+class API_AUTHZ,I2,E1D,E5,E6,R3,R6,A3,H1,H4,H6,H9,F2,F6,M2,M3,K3,K4,FD2,FD5 decision
+class I1D,R1,R2,R4,R5,R7,METER,X1,X2,X3,X4 ai
+class LG1,LG2,LG3,LG4,LG5 lg
+class LG0,LG9 term
+class LLM1,LLM2 llm
+class LLM3 alt
+class H2,H3,H5,H7,H8,H10,H11,F1,F3,F4,F5,F7,F8,F9,M1,M5,K1,K2,K5 human
+class M4,FD1,FD3,FD4,FD6,FD7,FD8 final
+class DB_CORE,DB_VEC,DB_RISK,DB_REV,DB_GOV,DB_AUD,DB_FILES db
+class API_DENY,I2X,E1X,E5X,E6X,R8,A4,M3X,M6,K4X err
+class AU1,AU2,AU3,AU4,AU5,AU6,AU8 audit
+class AU7 optional
+
+%% ---------------- subgraph styles ----------------
+style ACT fill:#fffbf5,stroke:#fdba74,stroke-width:1.5px
+style FE fill:#f5f9ff,stroke:#93c5fd,stroke-width:1.5px
+style BE fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px
+style GW fill:#f1f5f9,stroke:#94a3b8,stroke-width:1.5px
+style SVC fill:#f1f5f9,stroke:#94a3b8,stroke-width:1.5px
+style P1 fill:#ffffff,stroke:#cbd5e1,stroke-width:1.5px
+style P2 fill:#ffffff,stroke:#cbd5e1,stroke-width:1.5px
+style AIW fill:#fbfaff,stroke:#c4b5fd,stroke-width:1.5px
+style LG fill:#f5f3ff,stroke:#a78bfa,stroke-width:1.5px
+style IR fill:#ffffff,stroke:#c4b5fd,stroke-width:1.5px
+style XAI fill:#ffffff,stroke:#c4b5fd,stroke-width:1.5px
+style LLMP fill:#fdf4ff,stroke:#c084fc,stroke-width:1.5px
+style HRA fill:#fffbf5,stroke:#fdba74,stroke-width:1.5px
+style P4 fill:#ffffff,stroke:#fed7aa,stroke-width:1.5px
+style P5 fill:#ffffff,stroke:#fed7aa,stroke-width:1.5px
+style P6 fill:#ffffff,stroke:#fed7aa,stroke-width:1.5px
+style P7 fill:#ffffff,stroke:#fed7aa,stroke-width:1.5px
+style P8 fill:#ffffff,stroke:#a7f3d0,stroke-width:1.5px
+style DB fill:#f0fdf4,stroke:#86efac,stroke-width:1.5px
+style AUD fill:#f9fafb,stroke:#d1d5db,stroke-width:1.5px
+
+%% ---------------- edge styles (indices generated from edge order) ----------------
+linkStyle 7,8,9,10,11,12,13,80 stroke:#1d4ed8,stroke-width:2px
+linkStyle 14,16,17,19,20,22,23,26,27,31,34,35,39,40,46,48,49,50,52,53,54,55,56,57,62,63,64,66,68,70,71,74,75,78,83,85,87,88,92,93,97,98,101,103,104,108,113,118,122,130,131,132,133,134,135,137,141,150 stroke:#475569,stroke-width:1.6px
+linkStyle 21,36,58,59,60,61,84,94,99 stroke:#7c3aed,stroke-width:2.6px
+linkStyle 28,37,38,47,51,72,90,106,124,142,146,147,148,149 stroke:#15803d,stroke-width:1.5px,stroke-dasharray:4 3
+linkStyle 0,1,2,3,4,5,6,25,30,33,42,43,45,81,82,86,95,100,102,107,109,110,111,112,114,115,119,120,121,123,125,126,127,128,136,139,140 stroke:#ea580c,stroke-width:2px
+linkStyle 18,29,73,79,89,105,143,144,145 stroke:#6b7280,stroke-width:1.3px,stroke-dasharray:6 4
+linkStyle 15,24,32,41,44,65,67,69,76,77,91,96,116,117,129,138 stroke:#b91c1c,stroke-width:1.6px

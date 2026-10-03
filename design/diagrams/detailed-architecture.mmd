@@ -1,0 +1,76 @@
+%% Diagram 3 - Detailed Technical Architecture
+flowchart LR
+  subgraph FE["frontend/src"]
+    R["router.tsx"]
+    C["api/client.ts<br/>VITE_API_BASE_URL, 401 handling, error envelope"]
+    F1["features/dashboard"]
+    F2["features/assessment/*<br/>intake, evidence, risk-factors, controls, residual, review, decision"]
+    F3["features/approvals"]
+    F4["features/audit"]
+    SH["shared: RiskLevelBadge, UnratedBadge,<br/>EvidenceBlock, ProgressStepper, ProvenanceLine"]
+    R --> F1 & F2 & F3 & F4
+    F1 & F2 & F3 & F4 --> C
+    F2 --> SH
+  end
+
+  subgraph MW["app/middleware.py"]
+    M1["SecurityHeaders + CSP"] --> M2["Timing + X-Request-ID"] --> M3["AdminAudit"]
+  end
+
+  subgraph AUTH["app/auth"]
+    A1["security.py JWT, bcrypt"]
+    A2["access.py visibility scope"]
+    A3["permissions.py role to permission matrix"]
+  end
+
+  subgraph API["app/api"]
+    P1["assessments/* intake, documents, analysis, factors, scores"]
+    P2["approvals.py"]
+    P3["controls.py, challenge_review.py"]
+    P4["workflow.py, action_items.py, reassessment.py"]
+    P5["analysis_runs.py (new)"]
+    P6["audit_trail.py, reports.py, system.py, risk_methodology.py, reference_data.py"]
+  end
+
+  subgraph SVC["app/services"]
+    S1["workflow.py transition() - sole status writer"]
+    S2["analysis_service.py (new)"]
+    S3["inherent_risk_service, residual_risk_service"]
+    S4["decision_record_service, explainability*"]
+    S5["processing_jobs.py"]
+    S6["audit_service.py"]
+  end
+
+  subgraph ORCH["app/langgraph"]
+    G["graph.py WORKFLOW_VERSION"]
+    N["nodes.py 7 nodes"]
+  end
+
+  subgraph AI["app/ai"]
+    PR["prompts/registry.py"]
+    MP["metering.metered_post"]
+    AZ["risk_factor_analyzer, likelihood_impact, control_identifier, draft_generator, ai_extractor"]
+  end
+
+  subgraph ENG["engines - pure"]
+    E1["risk_engine/evidence.py"]
+    E2["risk_engine/scoring.py SCORING_ENGINE_VERSION"]
+    E3["risk_engine/degraded.py, engine.py rules-only"]
+    E4["control_engine/*"]
+    E5["challenge_engine/*"]
+  end
+
+  DB[("Neon Postgres<br/>pooled URL runtime<br/>direct URL migrations")]
+  ORT[("OpenRouter")]
+
+  C -->|HTTPS| MW --> AUTH --> API
+  API --> SVC
+  S2 --> S5 --> G --> N
+  N --> AZ --> PR
+  AZ --> MP --> ORT
+  N --> E1 & E2 & E3
+  S3 --> E2 & E4
+  S4 --> E5
+  SVC --> DB
+  MP --> DB
+  S6 --> DB

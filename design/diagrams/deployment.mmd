@@ -1,0 +1,42 @@
+%% Diagram 10 - Deployment architecture (MVP solid, production dashed)
+flowchart LR
+  subgraph Client
+    BR["Browser"]
+  end
+  subgraph Edge["Hosting platform"]
+    ST["Static site<br/>vite build output"]
+    subgraph APP["Backend container - 1 instance MVP"]
+      UV["uvicorn app.main:app"]
+      WK["in-process job pool<br/>+ escalation loop"]
+    end
+    VOL[("Persistent volume<br/>encrypted uploads")]
+    SEC[["Secret store<br/>DATABASE_URL, OPENROUTER_API_KEY,<br/>JWT_SECRET, FILE_ENCRYPTION_KEY"]]
+  end
+  subgraph Neon["Neon project"]
+    POOL["Pooler endpoint<br/>runtime, sslmode=require"]
+    DIR["Direct endpoint<br/>migrations"]
+    MAIN[("branch main - prod")]
+    STG[("branch staging")]
+    CI[("ephemeral ci branches")]
+  end
+  OR[("OpenRouter")]
+  LF[("Langfuse Cloud")]
+  CICD["CI/CD<br/>pytest, build, Playwright,<br/>alembic upgrade head"]
+
+  BR -->|HTTPS| ST
+  BR -->|"HTTPS /api"| UV
+  UV --> WK
+  UV --> VOL
+  SEC -.-> UV
+  UV --> POOL --> MAIN
+  CICD --> DIR --> MAIN
+  CICD --> CI
+  UV -->|HTTPS| OR
+  UV -.-> LF
+
+  OBJ[("Object storage - production")]
+  QW["Dedicated worker - production<br/>SKIP LOCKED job queue"]
+  SSO[("OIDC IdP - production")]
+  UV -.-> OBJ
+  QW -.-> POOL
+  BR -.-> SSO
