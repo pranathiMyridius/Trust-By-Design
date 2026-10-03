@@ -1,3 +1,4 @@
+import logging
 import re
 
 from app.schemas.document_analysis import (
@@ -5,11 +6,27 @@ from app.schemas.document_analysis import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
+# R1.2: the 9 canonical change types, plus the legacy values already
+# stored on existing assessments.
 CHANGE_TYPE_MAP = {
-    "new product": "NEW_PRODUCT",
     "new product & technology integration": "NEW_PRODUCT",
-    "material change": "MATERIAL_CHANGE",
+    "new product": "NEW_PRODUCT",
+    "new service": "NEW_SERVICE",
+    "new customer segment": "NEW_CUSTOMER_SEGMENT",
+    "customer segment": "NEW_CUSTOMER_SEGMENT",
     "new geography": "NEW_GEOGRAPHY",
+    "new country": "NEW_GEOGRAPHY",
+    "process change": "PROCESS_CHANGE",
+    "technology change": "TECHNOLOGY_CHANGE",
+    "third party introduction": "THIRD_PARTY_INTRODUCTION",
+    "transaction limit": "TRANSACTION_LIMIT_OR_CHANNEL_CHANGE",
+    "channel change": "TRANSACTION_LIMIT_OR_CHANNEL_CHANGE",
+    "periodic reassessment": "PERIODIC_REASSESSMENT",
+    "reassessment": "PERIODIC_REASSESSMENT",
+    "material change": "MATERIAL_CHANGE",
     "third party": "THIRD_PARTY",
     "third-party": "THIRD_PARTY",
     "vendor": "THIRD_PARTY",
@@ -19,8 +36,46 @@ CHANGE_TYPE_MAP = {
 def analyze_document_text(
     extracted_text: str,
 ) -> DocumentAssessmentExtraction:
+    """
+    R2.3: extract structured assessment fields from an uploaded
+    document.
+
+    Primary path is AI extraction (app.document_analysis.ai_extractor),
+    using the same OpenRouter-backed model already used for risk
+    analysis. If the AI call fails for any reason -- no API key
+    configured, the provider is unreachable, a malformed response --
+    this falls back to the original rule-based/regex extractor below
+    so that uploading a document never breaks the intake flow.
+
+    Either way, the caller still shows the result to the user for
+    confirmation before anything is saved (R2.3's second half).
+    """
 
     text = extracted_text.strip()
+
+    try:
+        from app.document_analysis.ai_extractor import extract_with_ai
+
+        return extract_with_ai(text)
+
+    except Exception as exc:
+        logger.warning(
+            "AI document extraction failed; falling back to the "
+            "rule-based extractor. Reason: %s",
+            exc,
+        )
+
+        return _analyze_document_text_rule_based(text)
+
+
+def _analyze_document_text_rule_based(
+    text: str,
+) -> DocumentAssessmentExtraction:
+    """
+    Fallback extractor used only when AI extraction is unavailable.
+    Regex/keyword based, tuned to the sample intake document format
+    this app was originally built against.
+    """
 
     title = _extract_project_name(text)
 
@@ -40,6 +95,14 @@ def analyze_document_text(
         business_description=business_description,
         evidence=text,
         business_line=_extract_business_line(text),
+        product_or_service_name=_extract_value(text, "Product Name:")
+        or _extract_value(text, "Service Name:"),
+        business_owner=_extract_value(text, "Business Owner:"),
+        legal_entity=_extract_value(text, "Legal Entity:"),
+        transaction_types=_extract_value(text, "Transaction Types:"),
+        expected_launch_date=_extract_value(text, "Launch Date:")
+        or _extract_value(text, "Implementation Date:"),
+        submitted_by=_extract_value(text, "Submitted By:"),
         channels=_extract_channels(text),
         countries=countries,
         customer_segments=_extract_customer_segments(text),
@@ -61,6 +124,7 @@ def analyze_document_text(
         regulatory_considerations=_extract_regulations(text),
         existing_controls=_extract_controls(text),
         additional_risk_factors=_extract_risk_factors(text),
+        extraction_method="RULES",
     )
 
 
