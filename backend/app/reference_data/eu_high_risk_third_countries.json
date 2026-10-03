@@ -1,0 +1,45 @@
+{
+  "source": "EU",
+  "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A02016R1675-20260129",
+  "as_of": "2026-01-29",
+  "statement": "Commission Delegated Regulation (EU) 2016/1675, consolidated text 02016R1675 — EN — 29.01.2026 — 013.001 (as amended by (EU) 2026/46 and (EU) 2026/83)",
+  "verified": true,
+  "verification_note": "Taken from the EUR-Lex consolidated text of the Regulation itself, not from secondary reporting. The Annex's four categories are preserved as separate tiers. Note this list is NOT the same as FATF's and deliberately lags it -- Algeria and Namibia remain EU-listed although FATF removed them at the June 2026 plenary. Re-check after each amending Delegated Regulation.",
+  "tiers": {
+    "EU_COMMITMENT_ACTION_PLAN": "Annex I: written high-level political commitment to address the identified deficiencies, with an action plan developed with FATF.",
+    "EU_TECHNICAL_ASSISTANCE": "Annex II: high-level political commitment, having decided to seek technical assistance implementing the FATF Action Plan; identified by FATF Public Statement.",
+    "EU_ONGOING_SUBSTANTIAL_RISK": "Annex III: ongoing and substantial ML/TF risks, having repeatedly failed to address the identified deficiencies; identified by FATF Public Statement.",
+    "EU_FATF_MEMBERSHIP_SUSPENDED": "Annex IV: not subject to FATF calls for action or increased monitoring, but whose FATF membership is suspended."
+  },
+  "jurisdictions": [
+    { "iso_code": "AF", "name": "Afghanistan", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "DZ", "name": "Algeria", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "AO", "name": "Angola", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "BO", "name": "Bolivia", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "VG", "name": "British Virgin Islands", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "CM", "name": "Cameroon", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "CI", "name": "Cote d'Ivoire", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "CD", "name": "Democratic Republic of the Congo", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "HT", "name": "Haiti", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "KE", "name": "Kenya", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "LA", "name": "Laos", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "LB", "name": "Lebanon", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "MC", "name": "Monaco", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "MM", "name": "Myanmar", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "NA", "name": "Namibia", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "NP", "name": "Nepal", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "SS", "name": "South Sudan", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "SY", "name": "Syria", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "TT", "name": "Trinidad and Tobago", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "VU", "name": "Vanuatu", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "VE", "name": "Venezuela", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "VN", "name": "Vietnam", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+    { "iso_code": "YE", "name": "Yemen", "tier": "EU_COMMITMENT_ACTION_PLAN" },
+
+    { "iso_code": "IR", "name": "Iran", "tier": "EU_TECHNICAL_ASSISTANCE" },
+
+    { "iso_code": "KP", "name": "Democratic People's Republic of Korea (DPRK)", "tier": "EU_ONGOING_SUBSTANTIAL_RISK" },
+
+    { "iso_code": "RU", "name": "Russian Federation", "tier": "EU_FATF_MEMBERSHIP_SUSPENDED" }
+  ]
+}

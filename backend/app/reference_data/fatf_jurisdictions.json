@@ -1,0 +1,40 @@
+{
+  "source": "FATF",
+  "source_url": "https://www.fatf-gafi.org/en/publications/High-risk-and-other-monitored-jurisdictions.html",
+  "as_of": "2026-06-19",
+  "statement": "FATF Plenary, 17-19 June 2026",
+  "verified": false,
+  "verification_note": "Compiled from secondary reporting of the June 2026 FATF Plenary, cross-checked across two independent summaries (black list unchanged at Iran/DPRK/Myanmar; grey list of 22 with Bosnia and Herzegovina and Iraq added, Algeria and Namibia removed). FATF's own site blocks automated retrieval, so this has NOT been checked against the primary publication. Verify against source_url and set verified=true before relying on it for a real assessment. FATF revises these lists at each plenary (roughly three times a year) -- re-run the loader after each one.",
+  "tiers": {
+    "CALL_FOR_ACTION": "High-risk jurisdictions subject to a call for action (the 'black list').",
+    "INCREASED_MONITORING": "Jurisdictions under increased monitoring (the 'grey list'). Note FATF does not call for enhanced due diligence on the basis of grey-listing alone; treat it as a country-risk input, not a sanction."
+  },
+  "jurisdictions": [
+    { "iso_code": "IR", "name": "Iran", "tier": "CALL_FOR_ACTION" },
+    { "iso_code": "KP", "name": "Korea, Democratic People's Republic of", "tier": "CALL_FOR_ACTION" },
+    { "iso_code": "MM", "name": "Myanmar", "tier": "CALL_FOR_ACTION" },
+
+    { "iso_code": "AO", "name": "Angola", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "BO", "name": "Bolivia", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "BA", "name": "Bosnia and Herzegovina", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "BG", "name": "Bulgaria", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "CM", "name": "Cameroon", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "CI", "name": "Cote d'Ivoire", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "CD", "name": "Congo, Democratic Republic of the", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "HT", "name": "Haiti", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "IQ", "name": "Iraq", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "KE", "name": "Kenya", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "KW", "name": "Kuwait", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "LA", "name": "Lao People's Democratic Republic", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "LB", "name": "Lebanon", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "MC", "name": "Monaco", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "NP", "name": "Nepal", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "PG", "name": "Papua New Guinea", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "SS", "name": "South Sudan", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "SY", "name": "Syrian Arab Republic", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "VE", "name": "Venezuela", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "VN", "name": "Viet Nam", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "VG", "name": "Virgin Islands, British", "tier": "INCREASED_MONITORING" },
+    { "iso_code": "YE", "name": "Yemen", "tier": "INCREASED_MONITORING" }
+  ]
+}
