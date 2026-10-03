@@ -1,0 +1,85 @@
+# AI quality evaluation (DeepEval) against a real model. Kept out of the
+# pull-request workflow because it needs an API key, costs money/quota and
+# takes minutes. Run it on demand -- e.g. before merging a prompt or model
+# change -- and weekly to catch provider-side drift.
+#
+# Required secret:  OPENAI_API_KEY (the provider is OpenAI: backend/app/ai/provider.py)
+# Optional secrets: LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST
+# Optional repo variables: OPENAI_MODEL, EVAL_JUDGE_MODEL
+#
+# Fails when a quality gate in backend/tests/evals/dataset.json is missed
+# or a metric regresses against backend/tests/evals/baseline.json.
+name: ai-evals
+
+on:
+  workflow_dispatch:
+    inputs:
+      cases:
+        description: "Comma-separated case ids (blank = all)"
+        required: false
+      model:
+        description: "Model under test (blank = OPENAI_MODEL variable)"
+        required: false
+      judge_model:
+        description: "Judge model (blank = EVAL_JUDGE_MODEL variable)"
+        required: false
+      runs:
+        description: "Runs per case (2+ measures consistency)"
+        required: false
+        default: "1"
+  schedule:
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: ai-evals
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # Live evaluations use the real provider (tests/conftest.py pins the
+      # offline one unless LIVE_LLM is set).
+      LIVE_LLM: "1"
+      LLM_PROVIDER: openai
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ inputs.model || vars.OPENAI_MODEL || 'gpt-4.1-mini' }}
+      EVAL_JUDGE_MODEL: ${{ inputs.judge_model || vars.EVAL_JUDGE_MODEL }}
+      EVAL_CASES: ${{ inputs.cases }}
+      EVAL_RUNS: ${{ inputs.runs || '1' }}
+      LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
+      LANGFUSE_ENVIRONMENT: ci-eval
+      DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Check the API key is configured
+        run: test -n "$OPENAI_API_KEY" || (echo "Set the OPENAI_API_KEY repository secret." && exit 1)
+      - name: Evaluate
+        run: python -m tests.evals.run --out eval_results/ci
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f eval_results/ci/summary.txt ]; then
+            { echo '```'; cat eval_results/ci/summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-eval-results
+          path: backend/eval_results/ci
+          retention-days: 30
