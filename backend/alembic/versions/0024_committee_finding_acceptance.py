@@ -58,7 +58,9 @@ def downgrade() -> None:
                 f"{count} challenge finding(s) were accepted as Committee exceptions; "
                 "downgrading 0024 would lose who accepted them on the Committee's authority."
             )
-    # Plain DROP COLUMN (SQLite >= 3.35, Postgres): neither is indexed or constrained.
-    for column in reversed(_added()):
-        if column.name in existing:
-            op.drop_column("challenge_findings", column.name)
+    # Batch mode, as 0017/0021: a database built from the models carries a
+    # foreign key on accepted_by_id, which SQLite can't DROP in place.
+    with op.batch_alter_table("challenge_findings") as batch:
+        for column in reversed(_added()):
+            if column.name in existing:
+                batch.drop_column(column.name)
