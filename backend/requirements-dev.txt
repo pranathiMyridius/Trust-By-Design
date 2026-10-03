@@ -1,0 +1,12 @@
+# Test and evaluation tooling. Install AFTER the runtime requirements, as a
+# separate step:
+#
+#     pip install -r requirements.txt
+#     pip install -r requirements-dev.txt
+#
+# (DeepEval requires click<8.4, so pip downgrades the click==8.5.0 pinned in
+# requirements.txt. Nothing in the app imports click; uvicorn accepts >=7.
+# Installing both files in one command fails resolution for that reason.)
+pytest==9.1.1
+pytest-cov==7.1.0
+deepeval==4.2.6

@@ -25,46 +25,262 @@ button {
   background: #f4f6f8;
 }
 
+/* ---------- Shell: icon rail + column (header over content) ---------- */
+
+.app-body {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 68px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  z-index: 20;
+}
+
+.rail-brand {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #1f2937;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rail-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.nav-item {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.nav-item:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.nav-item.active {
+  background: #eef0f3;
+  color: #111827;
+  box-shadow: inset 0 0 0 1px #e5e7eb;
+}
+
+.nav-item:focus-visible,
+.rail-avatar:focus-visible {
+  outline: 2px solid #1f2937;
+  outline-offset: 2px;
+}
+
+/* Hover/focus label for the icon-only nav. */
+.nav-item[data-tooltip]:hover::after,
+.nav-item[data-tooltip]:focus-visible::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.rail-footer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rail-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: linear-gradient(135deg, #4b5563, #1f2937);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rail-menu {
+  position: absolute;
+  left: 52px;
+  bottom: 0;
+  min-width: 200px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(17, 24, 39, 0.12);
+  padding: 6px;
+}
+
+.rail-menu-who {
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid #f0f1f3;
+  margin-bottom: 4px;
+}
+
+.rail-menu-who strong {
+  display: block;
+  font-size: 13px;
+  color: #111827;
+}
+
+.rail-menu-who span {
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: capitalize;
+}
+
+.rail-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rail-menu button:hover {
+  background: #f3f4f6;
+}
+
+.app-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .topbar {
-  height: 72px;
+  min-height: 72px;
   background: #ffffff;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.brand-mark {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: #172033;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 18px;
+  gap: 20px;
+  padding: 12px 28px;
+  flex-wrap: wrap;
 }
 
 .brand h1 {
   margin: 0;
-  font-size: 17px;
-  font-weight: 650;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #111827;
 }
 
 .brand span {
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 12px;
   color: #6b7280;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.topbar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 280px;
+  max-width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  border: 1px solid transparent;
+  color: #6b7280;
+}
+
+.topbar-search:focus-within {
+  background: #ffffff;
+  border-color: #1f2937;
+}
+
+.topbar-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: #111827;
+  outline: none;
+}
+
+.topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.topbar-pill-ai {
+  color: #6d28d9;
+  background: #f5f3ff;
+  border: 1px solid #a78bfa;
+}
+
+.topbar-pill-warn {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
 }
 
 .new-assessment-button,
@@ -83,49 +299,11 @@ button {
   opacity: 0.9;
 }
 
-.app-body {
-  display: flex;
-  min-height: calc(100vh - 72px);
-}
-
-.sidebar {
-  width: 230px;
-  background: #ffffff;
-  border-right: 1px solid #e5e7eb;
-  padding: 24px 14px;
-}
-
-.nav-item {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
-  margin-bottom: 4px;
-  border-radius: 8px;
-  text-align: left;
-  cursor: pointer;
-  color: #5f6878;
-  font-weight: 500;
-}
-
-.nav-item span {
-  width: 20px;
-}
-
-.nav-item.active {
-  background: #eef1f5;
-  color: #172033;
-  font-weight: 650;
-}
-
 .main-content {
   flex: 1;
   min-width: 0;
-  min-height: 100vh;
-  background: #f1f3f5;
+  padding: 24px 28px 40px;
+  background: #f4f6f8;
 }
 
 .page-header {
@@ -222,23 +400,23 @@ button {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-
-  .sidebar {
-    width: 190px;
-  }
 }
 
 @media (max-width: 600px) {
   .sidebar {
-    display: none;
+    width: 56px;
   }
 
   .topbar {
-    padding: 0 16px;
+    padding: 12px 16px;
   }
 
-  .new-assessment-button {
-    display: none;
+  .topbar-actions {
+    width: 100%;
+  }
+
+  .topbar-search {
+    width: 100%;
   }
 
   .main-content {
@@ -355,6 +533,56 @@ button {
   border-color: #172033;
 }
 
+.draft-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.request-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  padding: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.request-fields-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.request-fields-grid span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.request-fields-grid strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #172033;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.form-hint {
+  margin: -8px 0 22px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -381,6 +609,16 @@ button {
   cursor: not-allowed;
 }
 
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 0.85em;
+  text-decoration: underline;
+}
+
 .form-error {
   margin-bottom: 20px;
   padding: 12px 14px;
@@ -389,6 +627,29 @@ button {
   border: 1px solid #fecaca;
   color: #991b1b;
   font-size: 13px;
+}
+
+.form-warning {
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 13px;
+}
+
+.form-hint-field {
+  color: #b45309;
+  font-weight: 600;
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+.form-group--emphasized {
+  border-left: 3px solid #f59e0b;
+  padding-left: 10px;
+  margin-left: -13px;
 }
 .analyze-button {
   border: 0;
@@ -478,6 +739,30 @@ button {
 
 .risk-results {
   width: 100%;
+}
+
+.risk-table {
+  border-collapse: collapse;
+}
+
+.risk-table th,
+.risk-table td {
+  border: 1px solid #e1e7ed;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.risk-table th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.risk-results-section {
+  background: #ffffff;
+  border: 1px solid #e1e7ed;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  padding: 22px 24px;
 }
 
 .risk-result-row {
@@ -934,6 +1219,18 @@ button {
   background: #fef2f2;
   border-color: #fecaca;
   color: #991b1b;
+}
+
+.audit-badge.calculator {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
+.audit-badge.override {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
 }
 
 /* Status transition */
@@ -2036,6 +2333,31 @@ button {
   color: #15803d;
 }
 
+.degraded-result-banner {
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid #f59e0b;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #78350f;
+}
+
+.degraded-result-banner p {
+  margin: 6px 0 0;
+}
+
+.degraded-result-banner button {
+  margin-top: 10px;
+}
+
+/* Not yet rated: deliberately neutral, never the green "low" style. */
+.risk-score-badge.unrated {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px dashed #9ca3af;
+}
+
 .risk-score-row {
   display: flex;
   align-items: center;
@@ -2074,6 +2396,10 @@ button {
 
 .risk-progress-fill.low {
   background: #2f855a;
+}
+
+.risk-progress-fill.unrated {
+  background: transparent;
 }
 
 .risk-score-row strong {
@@ -2237,6 +2563,21 @@ button {
   font-size: 12px;
 }
 
+.risk-header-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.risk-rerun-error {
+  margin: 0 0 12px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
 @media (max-width: 1000px) {
   .risk-layout {
     grid-template-columns: 1fr;
@@ -2344,9 +2685,29 @@ button {
   color: #c53030;
 }
 
+.control-status.partially-effective {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.control-status.ineffective {
+  background: #fef2f2;
+  color: #c53030;
+}
+
+.control-status.unverified {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.control-status.not-assessed {
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .control-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
 .control-summary-item {
@@ -2391,6 +2752,31 @@ button {
   margin: 0 0 20px;
 
   font-size: 17px;
+}
+
+.challenge-review-status-card {
+  background: #334155;
+}
+
+.residual-risk-card-light {
+  background: #f8fafc;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+}
+
+.residual-risk-card-light .residual-risk-content,
+.residual-risk-card-light .residual-risk-row {
+  border-color: #e2e8f0;
+}
+
+.residual-risk-card-light .residual-risk-row span,
+.residual-risk-card-light .residual-risk-result > span {
+  color: #64748b;
+}
+
+.residual-risk-card-light .residual-risk-row strong,
+.residual-risk-card-light .residual-risk-result strong {
+  color: #1e293b;
 }
 
 .residual-risk-content {
@@ -4890,4 +5276,439 @@ button {
     border-left: 1px solid #e5e7eb;
     border-radius: 0 0 8px 8px;
   }
+}
+/* =========================================
+   STAGE TRACKER
+   9-stage horizontal pipeline tracker shown at the top of the assessment
+   details/workflow screen: Intake -> Evidence Collection -> Risk
+   Identification -> Inherent Risk Assessment -> Control Assessment ->
+   Residual Risk -> Human Review -> Committee Decision -> Audit.
+   ========================================= */
+
+.stage-tracker-wrapper {
+  margin: 0 0 24px;
+}
+
+.stage-tracker-banner {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.stage-tracker-banner.remediation {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}
+
+.stage-tracker-banner.rejected {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.stage-tracker {
+  display: flex;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 12px 4px 4px;
+  gap: 0;
+}
+
+.stage-tracker-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 84px;
+  text-align: center;
+  transition: opacity 0.2s ease;
+}
+
+.stage-tracker-step.clickable {
+  cursor: pointer;
+}
+
+.stage-tracker-step.clickable:hover {
+  opacity: 0.7;
+}
+
+.stage-tracker-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: #e5e7eb;
+  color: #6b7280;
+  border: 2px solid #e5e7eb;
+  z-index: 1;
+}
+
+.stage-tracker-label {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  line-height: 1.3;
+  padding: 0 4px;
+}
+
+.stage-tracker-connector {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: #e5e7eb;
+  z-index: 0;
+}
+
+.stage-tracker-step.completed .stage-tracker-marker {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+
+.stage-tracker-step.completed .stage-tracker-label {
+  color: #16a34a;
+}
+
+.stage-tracker-step.completed .stage-tracker-connector {
+  background: #16a34a;
+}
+
+.stage-tracker-step.current .stage-tracker-marker {
+  background: #1e3a5f;
+  border-color: #1e3a5f;
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(30, 58, 95, 0.15);
+}
+
+.stage-tracker-step.current .stage-tracker-label {
+  color: #1e3a5f;
+}
+
+.stage-tracker-step.future .stage-tracker-marker,
+.stage-tracker-step.future .stage-tracker-label {
+  opacity: 0.55;
+}
+
+@media (max-width: 900px) {
+  .stage-tracker-label {
+    display: none;
+  }
+}
+
+.workflow-step.locked {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* =========================================================
+   Stage 19: accessibility
+   Keyboard focus, skip link, screen-reader-only text, risk-level
+   badges (shape + text, not colour alone), field-level validation,
+   status/alert banners, and long-assessment navigation.
+   ========================================================= */
+
+/* Visible keyboard focus everywhere. !important so it wins over the
+   older per-component `outline: none` focus styles (those remain for
+   mouse focus via :focus). */
+:focus-visible {
+  outline: 3px solid #2563eb !important;
+  outline-offset: 2px !important;
+}
+
+tr:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible {
+  outline-offset: -3px !important;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: #172033;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+.main-content:focus {
+  outline: none;
+}
+
+/* Clickable rows / cards made keyboard operable */
+.wf-clickable,
+[role="button"].assessment-row {
+  cursor: pointer;
+}
+
+.workflow-step[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Risk level badge: text + shape, colour as an extra cue */
+.risk-level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.risk-level-badge-inline {
+  white-space: nowrap;
+}
+
+.risk-level-icon {
+  display: inline-block;
+  font-size: 0.95em;
+  line-height: 1;
+}
+
+.risk-level-very_low { background: #f0fdf4; color: #166534; }
+.risk-level-low { background: #f0fdf4; color: #166534; }
+.risk-level-medium { background: #fffbeb; color: #92400e; }
+.risk-level-high { background: #fff7ed; color: #c2410c; }
+.risk-level-very_high,
+.risk-level-critical { background: #fef2f2; color: #991b1b; }
+.risk-level-unknown { background: #f3f4f6; color: #4b5563; }
+
+.risk-level-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Field-level validation */
+.required-marker {
+  margin-left: 3px;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.field-error {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field-warning {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.form-group input[aria-invalid="true"],
+.form-group select[aria-invalid="true"],
+.form-group textarea[aria-invalid="true"],
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: #b91c1c !important;
+  box-shadow: 0 0 0 1px #b91c1c;
+}
+
+.error-summary {
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border: 2px solid #b91c1c;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.error-summary h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.error-summary ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.error-summary a {
+  color: #7f1d1d;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* Long-assessment navigation: sticky context bar + jump list */
+.section-nav-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 10px 28px;
+  background: rgba(255, 255, 255, 0.97);
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.section-nav-context {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 360px;
+}
+
+.section-nav-title {
+  overflow: hidden;
+  color: #1e293b;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-nav-meta {
+  display: flex;
+  gap: 6px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.section-nav {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.section-nav-heading {
+  flex-shrink: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.section-nav ol {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 2px;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.section-nav a {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  color: #334155;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.section-nav a:hover {
+  background: #f1f5f9;
+}
+
+.section-nav a.active,
+.section-nav a[aria-current] {
+  border-color: #172033;
+  background: #172033;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.back-to-top {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #172033;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+  cursor: pointer;
+}
+
+/* Section headings get tabindex=-1 so "jump to" can focus them; keep a
+   gap below the sticky bar when scrolled into view. */
+.assessment-workflow h2[id] {
+  scroll-margin-top: 90px;
+}
+
+/* Stage 19: a real button inside a clickable table row (keyboard path) */
+.row-link-button {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-link-button:hover strong {
+  text-decoration: underline;
+}
+
+/* Stage 19: current pipeline stage is not shown by colour alone */
+.stage-tracker-step.current .stage-tracker-label {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.workflow-step.active > span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

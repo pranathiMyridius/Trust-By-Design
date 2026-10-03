@@ -1,0 +1,603 @@
+/* =========================================
+   CREATE ASSESSMENT (components/CreateAssessment.tsx)
+   ========================================= */
+
+.ca {
+  --ca-border: #e5e7eb;
+  --ca-muted: #6b7280;
+  --ca-ink: #111827;
+  --ca-ai: #7e22ce;
+  --ca-ai-soft: #faf5ff;
+  --ca-ai-line: #c084fc;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--ca-ink);
+}
+
+.ca .form-error,
+.ca .form-success {
+  margin: 0;
+}
+
+.ca .form-success {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  font-size: 13px;
+}
+
+/* ---------- Buttons ---------- */
+
+.ca-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--ca-border);
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ca-btn:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.ca-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ca-btn-ai {
+  border-color: var(--ca-ai);
+  background: var(--ca-ai);
+  color: #ffffff;
+}
+
+.ca-btn-ai:hover:not(:disabled) {
+  background: #6b21a8;
+}
+
+.ca-btn-primary {
+  border-color: #1f2937;
+  background: #1f2937;
+  color: #ffffff;
+  padding: 0 18px;
+}
+
+.ca-btn-primary:hover:not(:disabled) {
+  background: #111827;
+}
+
+.ca-btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ca-muted);
+}
+
+.ca-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #4338ca;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ---------- Dropzone ---------- */
+
+.ca-drop {
+  background: #ffffff;
+  border: 1px solid var(--ca-border);
+  border-radius: 12px;
+  padding: 28px 24px;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.ca-drop-active {
+  border: 1.5px dashed var(--ca-ai);
+  background: var(--ca-ai-soft);
+}
+
+.ca-drop-icon {
+  display: inline-flex;
+  color: #4b5563;
+  margin-bottom: 8px;
+}
+
+.ca-drop h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.ca-drop p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ca-muted);
+}
+
+.ca-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ca-files {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ca-files li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  font-size: 12px;
+  color: #374151;
+  max-width: 100%;
+}
+
+.ca-files button {
+  border: 0;
+  background: transparent;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ca-muted);
+  cursor: pointer;
+}
+
+.ca-files button:hover {
+  background: #e5e7eb;
+  color: var(--ca-ink);
+}
+
+.ca-drop-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* ---------- Form + sections ---------- */
+
+.ca-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ca-form-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ca-form-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ca-muted);
+}
+
+.ca-section {
+  background: #ffffff;
+  border: 1px solid var(--ca-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ca-section-heading {
+  margin: 0;
+  font-size: inherit;
+}
+
+.ca-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 0;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  color: #374151;
+}
+
+.ca-section-open .ca-section-toggle {
+  background: #f9fafb;
+  border-bottom: 1px solid #f0f1f3;
+  color: var(--ca-ink);
+}
+
+.ca-section-toggle:focus-visible {
+  outline: 2px solid #1f2937;
+  outline-offset: -2px;
+}
+
+.ca-step {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.ca-section-open .ca-step {
+  background: var(--ca-ai);
+  color: #ffffff;
+}
+
+.ca-section-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ca-section-meta {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ca-meta {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: var(--ca-muted);
+  white-space: nowrap;
+}
+
+.ca-meta-ai {
+  background: var(--ca-ai-soft);
+  color: var(--ca-ai);
+}
+
+.ca-meta-error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.ca-meta-done {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.ca-chevron {
+  display: inline-flex;
+  color: var(--ca-muted);
+  transition: transform 0.15s;
+}
+
+.ca-section-open .ca-chevron {
+  transform: rotate(180deg);
+}
+
+.ca-section-body {
+  padding: 18px 18px 20px;
+}
+
+.ca-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+
+.ca-wide {
+  grid-column: 1 / -1;
+}
+
+/* ---------- Fields ---------- */
+
+.ca-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ca-field label {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.ca-key-hint {
+  font-size: 10px;
+  font-weight: 600;
+  color: #4338ca;
+  background: #eef2ff;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.ca-field-hint {
+  margin: -2px 0 6px;
+  font-size: 11px;
+  color: var(--ca-muted);
+}
+
+.ca-control {
+  position: relative;
+}
+
+.ca-control input,
+.ca-control select,
+.ca-control textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ca-ink);
+  /* Keep focused fields clear of the sticky footer. */
+  scroll-margin: 24px 0 96px;
+}
+
+.ca-control input,
+.ca-control select {
+  height: 40px;
+}
+
+.ca-control textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.ca-control input:focus,
+.ca-control select:focus,
+.ca-control textarea:focus {
+  outline: none;
+  border-color: #1f2937;
+  box-shadow: 0 0 0 3px rgba(31, 41, 55, 0.08);
+}
+
+.ca-field-invalid .ca-control input,
+.ca-field-invalid .ca-control select,
+.ca-field-invalid .ca-control textarea {
+  border-color: #dc2626;
+}
+
+/* AI-extracted value awaiting review: purple frame plus chip/actions
+   inside the control. */
+.ca-control-ai input,
+.ca-control-ai select,
+.ca-control-ai textarea {
+  border-color: var(--ca-ai-line);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.08);
+  padding-right: 196px;
+}
+
+.ca-ai {
+  position: absolute;
+  top: 0;
+  right: 8px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ca-control-ai select + .ca-ai {
+  right: 30px;
+}
+
+.ca-ai-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #e9d5ff;
+  background: var(--ca-ai-soft);
+  color: var(--ca-ai);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ca-ai-chip span {
+  font-size: 8px;
+}
+
+.ca-ai-btn {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #4b5563;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ca-ai-btn:hover {
+  background: #f3f4f6;
+}
+
+.ca-ai-accept {
+  color: #16a34a;
+}
+
+.ca-ai-reject {
+  color: #dc2626;
+}
+
+/* ---------- Sticky footer ---------- */
+
+.ca-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 8px -28px -40px;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #ffffff;
+  border-top: 1px solid var(--ca-border);
+}
+
+.ca-footer-left {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .ca-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ca-section-meta {
+    display: none;
+  }
+
+  /* Not enough room for the chip inside the field: put it below. */
+  .ca-control-ai input,
+  .ca-control-ai select,
+  .ca-control-ai textarea {
+    padding-right: 12px;
+  }
+
+  .ca-ai {
+    position: static;
+    height: auto;
+    margin-top: 6px;
+  }
+}
+
+@media (max-width: 600px) {
+  .ca-footer {
+    margin: 8px -20px -20px;
+    padding: 12px 20px;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .ca-footer-left > .ca-btn {
+    flex: 1;
+  }
+}
+
+/* ---------- Yes/no switch (shell company indicator) ---------- */
+
+.ca-label {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.ca-toggle-row {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.ca-toggle-on {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.ca-toggle-state {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ca-muted);
+}
+
+.ca-toggle-on .ca-toggle-state {
+  color: #b91c1c;
+}
+
+.ca-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #d1d5db;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ca-switch[aria-checked="true"] {
+  background: #dc2626;
+}
+
+.ca-switch:focus-visible {
+  outline: 2px solid #1f2937;
+  outline-offset: 2px;
+}
+
+.ca-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s;
+}
+
+.ca-switch[aria-checked="true"] .ca-switch-knob {
+  transform: translateX(18px);
+}

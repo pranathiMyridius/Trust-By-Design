@@ -40,3 +40,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+# Stage 19: local backups
+backend/backups/
+# Local database + backups
+backend/risk.db
+backend/*.db.bak-*
+
+# Test and evaluation artifacts
+backend/eval_results/
+backend/.deepeval/
+.deepeval/
+.coverage
+coverage.xml
+htmlcov/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
