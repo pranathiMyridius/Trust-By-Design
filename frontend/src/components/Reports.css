@@ -1,0 +1,497 @@
+/* =========================================
+   STAGE 17 — REPORTS
+   Light palette to match App.css. Bars use one hue (magnitude only);
+   band pills always carry their text label, never color alone.
+   ========================================= */
+
+.rp-page {
+  --rp-series: #2a78d6;
+  --rp-track: #eef1f5;
+  --rp-text: #111827;
+  --rp-text-2: #4b5563;
+  --rp-muted: #6b7280;
+  --rp-border: #e5e7eb;
+}
+
+.rp-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.rp-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rp-preset {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rp-preset.active {
+  background: #172033;
+  border-color: #172033;
+  color: #ffffff;
+}
+
+.rp-dates {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.rp-dates label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.rp-dates input {
+  font: inherit;
+  font-size: 14px;
+  padding: 7px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.rp-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--rp-border);
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+
+.rp-tab {
+  border: 0;
+  background: transparent;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rp-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+
+.rp-tab.active {
+  color: var(--rp-text);
+  border-bottom-color: #172033;
+}
+
+.rp-meta {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--rp-muted);
+}
+
+.rp-empty {
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--rp-muted);
+}
+
+.rp-stats,
+.rp-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.rp-metrics {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.rp-stat,
+.rp-metric {
+  background: #ffffff;
+  border: 1px solid var(--rp-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rp-stat span,
+.rp-metric span {
+  font-size: 12px;
+  color: var(--rp-muted);
+}
+
+.rp-stat strong,
+.rp-metric strong {
+  font-size: 24px;
+  color: var(--rp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.rp-stat small,
+.rp-metric small {
+  font-size: 11px;
+  color: var(--rp-muted);
+  line-height: 1.4;
+}
+
+.rp-muted {
+  color: var(--rp-muted);
+}
+
+.rp-tone-danger {
+  color: #b91c1c !important;
+}
+
+.rp-tone-warning {
+  color: #b45309 !important;
+}
+
+.rp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.rp-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rp-panel {
+  background: #ffffff;
+  border: 1px solid var(--rp-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  min-width: 0;
+}
+
+.rp-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.rp-panel header {
+  margin-bottom: 10px;
+}
+
+.rp-panel h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--rp-text);
+}
+
+.rp-panel header p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--rp-muted);
+}
+
+/* ---- Bar list ---- */
+
+.rp-bars {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rp-bar-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 38%) 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 4px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.rp-bar-row:hover {
+  background: #f9fafb;
+}
+
+.rp-bar-label {
+  color: var(--rp-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-bar-track {
+  height: 10px;
+  background: var(--rp-track);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rp-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--rp-series);
+  border-radius: 0 4px 4px 0;
+}
+
+.rp-bar-value {
+  color: var(--rp-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+}
+
+.rp-bar-detail {
+  grid-column: 2 / -1;
+  font-size: 11px;
+  color: var(--rp-muted);
+  margin-top: -4px;
+}
+
+/* ---- Tables ---- */
+
+.rp-table-wrap {
+  overflow-x: auto;
+}
+
+.rp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.rp-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--rp-muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--rp-border);
+  white-space: nowrap;
+}
+
+.rp-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+  color: #1f2937;
+  max-width: 360px;
+  overflow-wrap: anywhere;
+}
+
+.rp-table td.rp-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rp-table-foot {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 8px;
+  font-size: 12px;
+  color: var(--rp-muted);
+}
+
+.rp-table-foot span {
+  margin-right: auto;
+}
+
+.rp-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.rp-link strong {
+  display: block;
+  color: #1d4ed8;
+}
+
+.rp-link span {
+  display: block;
+  font-size: 12px;
+  color: var(--rp-muted);
+}
+
+.rp-link:hover strong {
+  text-decoration: underline;
+}
+
+/* ---- Band pill (label always shown) ---- */
+
+.rp-band {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.rp-band-medium {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.rp-band-high {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+.rp-band-critical {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.rp-band-low {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+/* ---- Portfolio cards ---- */
+
+.rp-portfolio {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.rp-card {
+  background: #ffffff;
+  border: 1px solid var(--rp-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.rp-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.rp-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--rp-muted);
+}
+
+.rp-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 0 0 14px;
+}
+
+.rp-facts dt,
+.rp-notes dt {
+  font-size: 11px;
+  color: var(--rp-muted);
+  margin-bottom: 2px;
+}
+
+.rp-facts dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rp-text);
+  overflow-wrap: anywhere;
+}
+
+.rp-card-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 12px;
+}
+
+.rp-card-cols h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--rp-muted);
+}
+
+.rp-card-cols ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--rp-text);
+}
+
+.rp-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--rp-muted);
+  margin-top: 2px;
+}
+
+.rp-notes {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.rp-notes dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--rp-text-2);
+  line-height: 1.5;
+}
+
+@media (max-width: 1000px) {
+  .rp-grid,
+  .rp-grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rp-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rp-card-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
