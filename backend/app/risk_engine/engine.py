@@ -9,6 +9,28 @@ class RiskResult:
     reason: str
 
 
+# R1.2: the risk engine's assessment logic below was written against 4
+# legacy change-type buckets (NEW_GEOGRAPHY, NEW_PRODUCT, MATERIAL_CHANGE,
+# THIRD_PARTY). The intake form (R1.1/R1.2) now offers 9 canonical change
+# types; this maps each of them onto whichever of the 4 buckets its risk
+# profile most resembles, so every supported change type actually gets
+# assessed instead of silently producing no dimension-specific results.
+CHANGE_TYPE_RISK_CATEGORY = {
+    "NEW_PRODUCT": "NEW_PRODUCT",
+    "NEW_SERVICE": "NEW_PRODUCT",
+    "NEW_CUSTOMER_SEGMENT": "NEW_PRODUCT",
+    "NEW_GEOGRAPHY": "NEW_GEOGRAPHY",
+    "PROCESS_CHANGE": "MATERIAL_CHANGE",
+    "TECHNOLOGY_CHANGE": "MATERIAL_CHANGE",
+    "THIRD_PARTY_INTRODUCTION": "THIRD_PARTY",
+    "TRANSACTION_LIMIT_OR_CHANNEL_CHANGE": "MATERIAL_CHANGE",
+    "PERIODIC_REASSESSMENT": "MATERIAL_CHANGE",
+    # Legacy values already stored on existing assessments.
+    "MATERIAL_CHANGE": "MATERIAL_CHANGE",
+    "THIRD_PARTY": "THIRD_PARTY",
+}
+
+
 class RiskEngine:
 
     def assess(
@@ -22,22 +44,29 @@ class RiskEngine:
 
         results = []
 
-        if change_type == "NEW_GEOGRAPHY":
+        # Unrecognized/future change types fall back to MATERIAL_CHANGE
+        # (the most generic bucket) rather than producing no
+        # dimension-specific results at all.
+        risk_category = CHANGE_TYPE_RISK_CATEGORY.get(
+            change_type, "MATERIAL_CHANGE"
+        )
+
+        if risk_category == "NEW_GEOGRAPHY":
             results.extend(
                 self._assess_new_geography(text)
             )
 
-        elif change_type == "NEW_PRODUCT":
+        elif risk_category == "NEW_PRODUCT":
             results.extend(
                 self._assess_new_product(text)
             )
 
-        elif change_type == "MATERIAL_CHANGE":
+        elif risk_category == "MATERIAL_CHANGE":
             results.extend(
                 self._assess_material_change(text)
             )
 
-        elif change_type == "THIRD_PARTY":
+        elif risk_category == "THIRD_PARTY":
             results.extend(
                 self._assess_third_party(text)
             )
