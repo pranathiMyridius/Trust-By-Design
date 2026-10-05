@@ -1064,6 +1064,55 @@ and `p` was approved before `c` began:
 - **Live check** (synthetic data, throwaway SQLite): document extraction, risk-factor identification (10 categories, every quote verified) and embeddings (1536 dimensions) all succeeded on `gpt-4.1-mini` / `text-embedding-3-small`, each logged with provider `openai`.
 - Tests: new `tests/unit/test_ai_provider.py` (provider and model selection; OpenRouter-only fields never sent to OpenAI; the suite is pinned offline). Regression: backend pytest **501 passed, 0 failed** (495 + 6 provider tests); legacy scripts all pass; `tsc` clean; Playwright 30/30.
 
+### Backups encrypted, key rotation, manager-decision fix, committee quorum and finding rules (2026-10-03, "Requirements completion check" session)
+
+All of this is provisional policy: `policy_status` stays `PROVISIONAL_PENDING_GOVERNANCE_APPROVAL`, and no production setting has been changed. The direction behind it is recorded in `docs/GOVERNANCE_DECISIONS.md` ("Project direction of 2026-10-03").
+
+| Item | Change |
+|---|---|
+| **Backups encrypted (R19)** | See P7 open items above: the backup service encrypts the database copy and plaintext uploads, and verify/restore decrypt in memory. Key rotation uses `FILE_ENCRYPTION_PREVIOUS_KEYS` and `scripts/rotate_file_encryption_key.py`. Tests: `test_backup_encryption_and_rotation.py` (8). |
+| **Manager decision** | Admin is removed from the three SUBMITTED_TO_MANAGER transitions. Only the assigned Manager or a time-bound delegate may decide, and refusals are logged as `ACCESS_DENIED`. An **emergency approver** is an Admin-created delegation to a named Manager: labelled `EMERGENCY …` in the `DELEGATION_CREATED` audit event, and it never gives the Admin the authority. Tests: `test_manager_decision_authority.py` (6), plus the emergency test below. |
+| **Committee quorum (G-5)** | New `app/governance/quorum.py` (policy key `committee_quorum`). See the details below this table. |
+| **Challenge findings (G-4)** | See the details below this table. |
+| **Migration `0024_committee_acceptance`** | Adds `challenge_findings.accepted_by_id` and `acceptance_authority`. It is additive and backfills nothing. Downgrade (batch mode) refuses while any Committee acceptance exists. Tests: `test_migration_0024.py` (3). **Not run on staging or production.** |
+| **UI** | Accept is offered to committee members for MEDIUM findings only, and an earlier acceptance is shown as no longer counting. Resolve stays with the pipeline roles. The new designations appear in the Users designation editor (it reads the list from the API). |
+| **Test setup** | Real quorum users replace any bypass: conftest `fcrm_rep` and `business_rep`, `c3`/`c4` in the AW.7 script, representatives in the Stage 14 script and the E2E seed (`fcrmrep`, `businessrep`). Setups resolve findings instead of a Manager accepting them. |
+
+**Committee quorum (G-5) in detail:**
+- A final decision (approve, approve with conditions, reject) needs current votes from 3 eligible members, among them:
+  - an FCRM/Compliance representative;
+  - an independent Business Risk representative.
+
+  Each is identified by a new designation, `COMMITTEE_FCRM_COMPLIANCE_REP` or `COMMITTEE_BUSINESS_RISK_REP`, held with Committee Member, and the two must be different people.
+- **Never counted:** the requester, the requester's manager, the case manager and the manager-decision taker, preparers (`independence.involved`), and both people behind a delegated vote. Abstentions don't count.
+- **Readiness blockers:** `COMMITTEE_QUORUM_NOT_MET` at the final decision. `COMMITTEE_QUORUM_UNAVAILABLE` at submission, when the active committee can't form an eligible quorum.
+- Deferral needs no quorum. Readiness returns a `quorum` block (counted members, each seat and why it does or doesn't count).
+- Tests: `test_committee_quorum_and_findings.py` (12).
+
+**Challenge findings (G-4) in detail:**
+- **HIGH/CRITICAL** block submission until RESOLVED (`has_blocking_findings`, readiness `HIGH_FINDINGS_OPEN`). They can't be accepted (409), and an acceptance recorded earlier no longer counts.
+- **MEDIUM** is a warning at submission and a blocker at the final decision, until it is resolved or accepted.
+- **Who may accept a MEDIUM finding:** an eligible committee member (Committee Member role, not a party or preparer), while the case is Ready for Committee, Committee Review or Deferred. Anyone else gets a 403, logged.
+- An acceptance records the member, their id, the reason and `acceptance_authority = COMMITTEE`.
+
+**Assumptions to confirm (provisional):**
+- Who may accept a MEDIUM finding on the Committee's behalf: any eligible member, or only the Chair? Currently any eligible member; the setting is `finding_acceptors`.
+- That abstentions don't count toward quorum (`count_abstentions`).
+- That "independent" means not a party or preparer, since there is no home business unit per user.
+- That an Admin-created delegation serves as the emergency approver.
+
+**Behaviour change for existing data:**
+- On staging and production, findings accepted under the earlier rule no longer count:
+  - HIGH ones must be resolved;
+  - MEDIUM ones resolved or re-accepted by the Committee.
+- Submission is refused until an Admin assigns both representative designations to active committee members.
+
+**Results (isolated databases only):**
+- Backend pytest: **538 passed, then 7 failed, all migration round trips through 0024**. Fixed by batch mode in 0024's downgrade; the affected files were re-run: 17/17.
+- Legacy scripts: AW.7 13/13, Stage 14 9/9, phase-2 86, NFR 22/22, reporting 7/7, phase-1 71, degraded 60.
+- `tsc`: clean.
+- **Playwright: 31/31.**
+
 ## 7. Requirement checklist
 
 | Requirement | Status |

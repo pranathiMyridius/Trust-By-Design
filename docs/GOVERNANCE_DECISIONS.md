@@ -9,7 +9,31 @@ The Workbench is built and tested. Some rules in it were never specified by the 
 - the screens that depend on one show "Pending Governance Approval";
 - the API returns `policy_status: PROVISIONAL_PENDING_GOVERNANCE_APPROVAL`.
 
-On 2026-10-03 the project received a set of **proposed answers**. They are included under each item as **Proposed answer**. They are a draft for approval: **nothing in the system has been changed to match them.** Where a proposal differs from today's behaviour, the item says what would change and roughly how much work it is.
+On 2026-10-03 the project received a set of **proposed answers**. They are included under each item as **Proposed answer**. They are a draft for approval, and where a proposal differs from today's behaviour, the item says what would change and roughly how much work it is.
+
+### Project direction of 2026-10-03 (still pending formal approval)
+
+The project confirmed the following. All of it stays provisional: `policy_status` still reads `PROVISIONAL_PENDING_GOVERNANCE_APPROVAL`, and **no production setting has been changed**.
+
+- **The proposed G-1 to G-20 answers are the target design.** Each change is built only when its formal approval is in place, apart from the items marked *built* below.
+- **Manager approval (built).** At "Submitted to Manager", only these may approve, return or reject:
+  - the assigned Manager;
+  - a time-bound delegated Manager;
+  - an explicitly authorized emergency approver.
+
+  The Admin role alone never grants this. All approvals, delegations, emergency actions and rationale are logged. An emergency approver is an Admin-created delegation to a named Manager, labelled `EMERGENCY` in the audit trail.
+- **Committee quorum (built, G-5).** A final decision needs three eligible voting members:
+  - one FCRM/Compliance representative;
+  - one independent Business Risk representative;
+  - one more authorized member.
+
+  These never count toward quorum: requesters, their managers, the case's manager, the original analysts (anyone who prepared the case) and conflicted members. Submission is refused if no eligible quorum can be formed.
+- **Challenge findings (built, G-4).**
+  - HIGH and CRITICAL findings block Committee submission until resolved, and can't be accepted.
+  - Only MEDIUM findings may be accepted, as a documented Committee exception.
+- **Review intervals (G-17): unchanged.** 6 / 12 / 24 / 36 months, with the review due 30 days early.
+- **Stage 4 (G-9).** The three existing rules stay **mandatory**; new keyword groups may only suggest.
+- **No permanent deletion (G-16)** until all of these are formally approved: retention, legal holds, dual approval, a **30-day grace period**, a **Purge Register**, and **re-purge after a backup restore**.
 
 **Each item has:**
 - **Today:** what the system does now.
@@ -52,20 +76,20 @@ The proposal numbered its later items differently. This pack keeps one set of nu
 | G-1 | SoD exception approval | 🔴 | Head of FCRM/Compliance (standard); Committee Chair (high-risk, repeated, long) | Config, plus a small change |
 | G-2 | Admins as committee members | 🔴 | No by default; only through a time-bound exception, with that case's administration blocked | Small |
 | G-3 | Override review | 🔴 | An independent Senior Analyst, FCRM Manager, QA or Head of FCRM approves material overrides | Config, plus a small change |
-| G-4 | Challenge-review sign-off | 🔴 | An independent reviewer; HIGH findings may proceed if the Committee accepts them; CRITICAL needs a Committee decision | Medium |
-| G-5 | What blocks Committee | 🔴 | Add evidence, critical control gap, quorum and manager-approval blockers | Medium |
+| G-4 | Challenge-review sign-off | 🔴 | **Directed 2026-10-03:** HIGH/CRITICAL resolved before submission, never accepted; MEDIUM only as a documented Committee exception | **Built** (finding rules); the sign-off-per-severity matrix isn't built |
+| G-5 | What blocks Committee | 🔴 | **Directed 2026-10-03:** quorum of 3 eligible (FCRM/Compliance rep, independent Business Risk rep, one more). Also the other blockers proposed | **Quorum built**; critical-control-gap and rejected-evidence blockers not built |
 | G-6 | Governance visibility | 🔴 | **Least privilege**: no role sees everything by title | **Large** (reverses today) |
 | G-7 | LOW risk and Committee | 🔴 | **No Committee** for LOW unless an escalation trigger applies | **Medium–large** (reverses the 2026-10-02 decision) |
 | G-8 | Confidential originals | 🔴 | Need-to-know by assignment; Admin only through logged break-glass access | **Large** |
-| G-9 | Stage 4 keyword lists | 🔴 | Controlled, versioned reference data in 10 groups, owned by FCRM; suggestions only | Config + medium |
+| G-9 | Stage 4 keyword lists | 🔴 | Controlled, versioned reference data in 10 groups, owned by FCRM; new groups suggest only; **the three existing rules stay mandatory (directed 2026-10-03)** | Config + medium |
 | G-10 | Expired evidence deciders | 🟢 | (no proposal) | — |
 | G-11 | Confidence scale | 🟢 | (no proposal) | — |
 | G-12 | Intake changes that cancel confirmation | 🟢 | (no proposal) | — |
 | G-13 | Retention periods | 🟠 | 7 years from the **latest** of closure, decision, expiry or remediation closure | Config + small |
 | G-14 | Retention changes and legal holds: approvals | 🟠 | Joint Legal + Head of Compliance/FCRM; only Legal releases a hold | Small (needs a Legal designation) |
 | G-15 | Retention limits and rules | 🟠 | (no proposal) | — |
-| G-16 | Disposal process | 🟠 | Deletion request, holds check, dual approval, grace period, purge, deletion certificate | Large (it is the purge feature) |
-| G-17 | Reassessment intervals | 🟢 | 6 / 12 / 24 / 36 months, due 30 days early; plus material-change triggers | None for the intervals; small for the triggers |
+| G-16 | Disposal process | 🟠 | Deletion request, holds check, dual approval, **30-day grace period**, **Purge Register**, re-purge after restore, deletion certificate | Large; **not to be built until formally approved** (directed 2026-10-03) |
+| G-17 | Reassessment intervals | 🟢 | 6 / 12 / 24 / 36 months, due 30 days early (**kept, directed 2026-10-03**); plus material-change triggers | None for the intervals; small for the triggers |
 | G-18 | Legal-hold triggers | 🟠 | A defined list of trigger types | Small |
 | G-19 | Methodology change control | 🟢 | A dedicated Methodology Administrator; maker-checker; Committee approves material changes | Medium |
 | G-20 | Source library governance | 🟢 | An owner per source type; independent approval | Medium |
@@ -183,7 +207,17 @@ The proposal numbered its later items differently. This pack keeps one set of nu
 - The Committee would explicitly acknowledge CRITICAL findings.
 - "The product owner" is not an independence check today; it would be added.
 
-**Note:** the table says HIGH findings may go to the Committee if the Committee accepts them. The decision text says they must be resolved *before Committee submission* unless accepted. Please confirm whether acceptance happens before submission (for example by the Chair) or at the meeting.
+**Resolved by the 2026-10-03 direction (built, provisional):**
+- **HIGH and CRITICAL findings** block Committee submission until resolved, and can't be accepted. An acceptance recorded under the earlier rule no longer counts.
+- **MEDIUM findings** don't stop submission. They block the **final decision** until one of these happens:
+  - an analyst resolves them; or
+  - an eligible committee member accepts them as a documented Committee exception, while the Committee holds the case.
+
+  An eligible member is a Committee Member who isn't a party to, or a preparer of, the case.
+- A MEDIUM finding accepted under the earlier rule (by a Manager) must be accepted again by the Committee.
+- The acceptance records the member, their id, the reason and `acceptance_authority = COMMITTEE` (migration 0024).
+
+**Open:** the per-severity sign-off roles in the table above (for example "Head of FCRM plus Risk Committee" for CRITICAL) aren't built.
 
 ### G-5 Committee readiness (R-GOV-04)
 
@@ -214,7 +248,12 @@ Low findings and non-material corrections may stay open if they are visible to t
 
 **Change from today:** **medium.** New blockers:
 - **Critical control gap:** today only caught if the challenge engine raises it as a finding.
-- **Quorum:** the system has no quorum concept today, so a quorum rule (the number or share of members) must be defined.
+- **Quorum:** **built 2026-10-03** (provisional, `committee_quorum` in the governance policy). A final decision (approve, approve with conditions, reject) needs current votes from 3 eligible members.
+  - **Who counts:** one FCRM/Compliance representative and one independent Business Risk representative (designations an Admin assigns to Committee Members; they must be two different people), plus one more eligible member.
+  - **Who never counts:** the requester, the requester's manager, the case's manager and whoever took the manager decision, anyone who prepared the case, and conflicted members.
+  - Abstentions don't count. Deferral needs no quorum.
+  - On submission, the case is refused if the active committee can't form an eligible quorum (`COMMITTEE_QUORUM_UNAVAILABLE`).
+  - "Independent" means not a party to and not a preparer of the case. The system has no home business unit per user, so a same-business-unit test isn't applied.
 - **Rejected evidence:** no "rejected" state exists today.
 - **Manager approval and expired evidence** become explicit readiness checks.
 
