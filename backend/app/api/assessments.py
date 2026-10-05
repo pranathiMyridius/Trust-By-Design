@@ -3215,14 +3215,9 @@ def add_assessment_risk_factor(
     ensure_assessment_editable(assessment)
 
     score = max(0.0, min(100.0, payload.score)) if payload.applicable else 0.0
-    if score >= 80:
-        severity = "CRITICAL"
-    elif score >= 60:
-        severity = "HIGH"
-    elif score >= 40:
-        severity = "MEDIUM"
-    else:
-        severity = "LOW"
+    # Severity comes from the methodology's bands (not fixed cutoffs), so a
+    # manually added factor is labelled the same way as an identified one.
+    severity = determine_risk_band(score, get_methodology_config(db)["risk_bands"])
 
     factor = RiskFactor(
         assessment_id=assessment_id,
@@ -4729,13 +4724,6 @@ def _get_control_reduction_for_challenge(db: Session, assessment_id: int) -> flo
     return recompute_control_state(db, assessment_id)["control_reduction"]
 
 
-# Residual risk uses a lower MEDIUM cutoff (30, vs 40 for inherent risk in
-# app/risk_engine/scoring.py's defaults) since control reduction has
-# already been applied. Still overridable via the active RiskMethodology's
-# thresholds, so this isn't hardcoded beyond the built-in fallback.
-_DEFAULT_RESIDUAL_THRESHOLDS = {"CRITICAL": 80, "HIGH": 60, "MEDIUM": 30}
-
-
 def _residual_preview(db: Session, assessment: Assessment) -> dict:
     """
     The residual result as it would be frozen now (grid lookup, no row
@@ -4754,21 +4742,6 @@ def _residual_preview(db: Session, assessment: Assessment) -> dict:
     }
 
 
-def _get_risk_level(score: float, thresholds: dict[str, float] | None = None):
-    thresholds = thresholds or _DEFAULT_RESIDUAL_THRESHOLDS
-
-    if score >= thresholds.get("CRITICAL", 80):
-        return "CRITICAL"
-
-    if score >= thresholds.get("HIGH", 60):
-        return "HIGH"
-
-    if score >= thresholds.get("MEDIUM", 30):
-        return "MEDIUM"
-
-    return "LOW"
-
-
 def _build_challenge_findings(
     assessment,
     risk_results,
@@ -4779,13 +4752,13 @@ def _build_challenge_findings(
     critical_results = [
         result
         for result in risk_results
-        if result.score >= 80
+        if determine_risk_band(result.score, risk_bands) == "CRITICAL"
     ]
 
     high_results = [
         result
         for result in risk_results
-        if 60 <= result.score < 80
+        if determine_risk_band(result.score, risk_bands) == "HIGH"
     ]
 
     if critical_results:
@@ -4916,9 +4889,13 @@ def _build_challenge_findings(
                     "The challenge review did not identify a "
                     "specific critical exception. The reviewer "
                     "should validate the overall risk rationale "
+    risk_bands=None,
                     "and supporting controls."
                 ),
             )
+    # Bands come from the methodology in force (risk_bands), falling back to
+    # the built-in defaults, so a score is called CRITICAL/HIGH here exactly
+    # when it is everywhere else.
         )
 
     return findings
@@ -5140,6 +5117,7 @@ def update_assessment_challenge(
         "comment": challenge.comment,
         "challenged_by": challenge.challenged_by,
         "created_at": challenge.created_at,
+        get_methodology_config(db)["risk_bands"],
         "updated_at": challenge.updated_at,
         "findings": _build_challenge_findings(
             assessment,
@@ -5288,6 +5266,7 @@ def update_fcrm_review(
 
     if not review:
         review = AssessmentFcrmReview(
+            get_methodology_config(db)["risk_bands"],
             assessment_id=assessment_id,
             justification=payload.justification,
             human_ratings=encoded_ratings,

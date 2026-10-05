@@ -44,3 +44,34 @@ SUGGESTED_CONTROLS_BY_CATEGORY: dict[str, list[str]] = {
     ],
     "CONTROL_ENVIRONMENT_RISK": ["REGULATORY_REPORTING", "INVESTIGATION_PROCESSES"],
 }
+
+
+# How many controls an automatically identified risk gets, and how many of
+# those the AI may add beyond the category's suggested set. The same few
+# controls (transaction monitoring, vendor due diligence) otherwise end up
+# mapped to every risk, which multiplies the assessment work without adding
+# protection.
+MAX_CONTROLS_PER_RISK = 3
+MAX_AI_ADDITIONS = 1
+
+
+def select_controls(category: str, ai_suggested: list[str]) -> list[str]:
+    """
+    The controls to map automatically to a risk of `category`: the category's
+    suggested set first (deterministic and in the library's own order), then
+    at most MAX_AI_ADDITIONS of the AI's recommendations that the set doesn't
+    already contain, up to MAX_CONTROLS_PER_RISK in all.
+
+    A category with no suggested set (or an unknown one) falls back to the
+    AI's own top recommendations. With no AI answer at all the suggested set
+    is returned on its own, so a risk is never left without a starting point.
+    """
+
+    valid_ai = [control for control in ai_suggested if control in CONTROL_LIBRARY]
+    defaults = list(SUGGESTED_CONTROLS_BY_CATEGORY.get(category, []))
+
+    if not defaults:
+        return valid_ai[:MAX_CONTROLS_PER_RISK]
+
+    additions = [control for control in valid_ai if control not in defaults][:MAX_AI_ADDITIONS]
+    return (defaults + additions)[:MAX_CONTROLS_PER_RISK]
