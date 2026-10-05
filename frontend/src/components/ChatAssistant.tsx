@@ -96,6 +96,7 @@ function errorText(err: unknown): string {
 
 export default function ChatAssistant({ assessmentId, onOpenAssessment }: Props) {
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -195,26 +196,59 @@ export default function ChatAssistant({ assessmentId, onOpenAssessment }: Props)
           }}
         >
           <header className="chat-header">
-            <div>
-              <h2>Assistant</h2>
-              <p>
-                Read-only. Answers from assessments you can access
-                {assessmentId !== null ? ` · viewing #${assessmentId}` : ""}.
-              </p>
-            </div>
+            <span className="chat-header-icon" aria-hidden="true">
+              <NavIcon name="bot" size={24} />
+            </span>
+            <h2>Assistant</h2>
             <div className="chat-header-actions">
-              {messages.length > 0 && (
-                <button type="button" className="chat-link-button" onClick={newChat}>
-                  New chat
+              <div className="chat-menu-wrap">
+                <button
+                  type="button"
+                  className="chat-icon-button"
+                  aria-label="More options"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((value) => !value)}
+                >
+                  <span aria-hidden="true">•••</span>
                 </button>
-              )}
+                {menuOpen && (
+                  <div className="chat-menu" role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={messages.length === 0}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        newChat();
+                      }}
+                    >
+                      New chat
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        newChat();
+                        setOpen(false);
+                      }}
+                    >
+                      End chat
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 className="chat-icon-button"
-                aria-label="Close assistant"
-                onClick={() => setOpen(false)}
+                aria-label="Minimise assistant"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setOpen(false);
+                }}
               >
-                ×
+                <span aria-hidden="true">&#8212;</span>
               </button>
             </div>
           </header>
@@ -230,10 +264,6 @@ export default function ChatAssistant({ assessmentId, onOpenAssessment }: Props)
 
             {messages.length === 0 && (
               <div className="chat-welcome">
-                <p>
-                  Ask me about the status, deadlines or risk rating of an assessment. I can
-                  explain things, but I can&apos;t make changes or decisions.
-                </p>
                 <div className="chat-suggestions">
                   {suggestions.map((suggestion) => (
                     <button
@@ -312,21 +342,27 @@ export default function ChatAssistant({ assessmentId, onOpenAssessment }: Props)
               ref={inputRef}
               value={draft}
               maxLength={MAX_LENGTH}
-              rows={2}
-              placeholder="Ask about an assessment…"
+              rows={1}
+              placeholder="Message..."
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={onKeyDown}
             />
             <button
               type="submit"
               className="chat-send"
+              aria-label="Send message"
               disabled={busy || !draft.trim()}
             >
-              Send
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 3 10 14" />
+                <path d="m21 3-7 18-4-7-7-4 18-7Z" />
+              </svg>
             </button>
           </form>
           <p className="chat-footnote">
-            AI-generated, so check anything important in the assessment itself.
+            Read-only. Answers from assessments you can access
+            {assessmentId !== null ? ` · viewing #${assessmentId}` : ""}. AI-generated, so check
+            anything important in the assessment itself.
           </p>
         </section>
       )}
