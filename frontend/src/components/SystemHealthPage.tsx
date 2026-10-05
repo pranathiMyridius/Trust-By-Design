@@ -129,9 +129,59 @@ export default function SystemHealthPage() {
     }
   }
 
+  const securityFailures = security
+    ? [
+        security.all_api_routes_require_authentication,
+        security.admin_actions_logged,
+        security.jwt_secret_configured,
+        security.file_encryption_at_rest,
+        security.https_enforced,
+        security.ai_payload_masking,
+      ].filter((ok) => !ok).length
+    : null;
+  const integrityOk = integrity ? integrity.database_check === "ok" && integrity.documents_missing_files.length === 0 : null;
+
+  const tiles: { key: string; label: string; ok: boolean; value: string; detail: string }[] = [];
+  if (recovery) {
+    tiles.push({
+      key: "backup",
+      label: "Backup & recovery",
+      ok: recovery.rpo_met,
+      value: recovery.rpo_met ? "Within target" : "Backup overdue",
+      detail: recovery.latest_backup ? `Latest backup ${recovery.latest_backup_age_hours} hours ago` : "No backup yet",
+    });
+  }
+  if (integrityOk !== null) {
+    tiles.push({
+      key: "integrity",
+      label: "Data integrity",
+      ok: integrityOk,
+      value: integrityOk ? "All checks passed" : "Needs attention",
+      detail: integrity ? `${integrity.documents_missing_files.length} missing file(s)` : "",
+    });
+  }
+  if (securityFailures !== null) {
+    tiles.push({
+      key: "security",
+      label: "Security configuration",
+      ok: securityFailures === 0,
+      value: securityFailures === 0 ? "All checks passed" : `${securityFailures} to fix`,
+      detail: security && security.recommendations.length ? `${security.recommendations.length} recommendation(s)` : "No recommendations",
+    });
+  }
+  if (performance) {
+    tiles.push({
+      key: "performance",
+      label: "Response times",
+      ok: performance.routes_outside_target === 0,
+      value: performance.routes_outside_target === 0 ? "Within target" : `${performance.routes_outside_target} slow route(s)`,
+      detail: `${performance.routes.length} route(s) measured`,
+    });
+  }
+
   return (
-    <div className="nfr-page">
-      <div className="page-header">
+    <div className="nfr-page sys-page">
+      <div className="page-header sys-header">
         <div>
           <h2>System Health</h2>
           <p>Performance, backup and recovery, data integrity and security configuration.</p>
@@ -152,6 +202,21 @@ export default function SystemHealthPage() {
           <span aria-hidden="true">✓ </span>
           {message}
         </p>
+      )}
+
+      {tiles.length > 0 && (
+        <section className="sys-tiles" aria-label="Health summary">
+          {tiles.map((tile) => (
+            <div key={tile.key} className={`sys-tile ${tile.ok ? "sys-tile--ok" : "sys-tile--warn"}`}>
+              <span className="sys-tile-label">{tile.label}</span>
+              <strong>
+                <span aria-hidden="true">{tile.ok ? "✓ " : "⚠ "}</span>
+                {tile.value}
+              </strong>
+              <span className="sys-tile-detail">{tile.detail}</span>
+            </div>
+          ))}
+        </section>
       )}
 
       <section className="content-card nfr-section" aria-labelledby="nfr-recovery">
@@ -203,9 +268,11 @@ export default function SystemHealthPage() {
           <p role="status">Loading…</p>
         )}
 
-        <button type="button" className="primary-button" onClick={handleBackup} disabled={busy}>
-          {busy ? "Working…" : "Create backup now"}
-        </button>
+        <div className="sys-actions">
+          <button type="button" className="primary-button" onClick={handleBackup} disabled={busy}>
+            {busy ? "Working…" : "Create backup now"}
+          </button>
+        </div>
 
         {backups.length > 0 && (
           <table className="nfr-table">

@@ -4,6 +4,7 @@ import {
   login,
   openAssessment,
   stage,
+  confirmPendingOverrides,
   toCommittee,
   toHumanReview,
   toManagerReview,
@@ -21,6 +22,9 @@ test.describe("Governance records", () => {
   test("the manager cannot approve until the challenge review is reviewed and signed off", async ({ page, request }) => {
     const title = unique("E2E Sign-off");
     const id = await toManagerReview(request, title);
+    // The ratings that differ from the AI's are overrides awaiting review; clear
+    // them so the challenge sign-off is the only thing left to do.
+    await confirmPendingOverrides(request, id);
     // P3: the independent review is done by the reviewer (API); the
     // manager signs off in the UI.
     await api(request, "reviewer", "POST", `/api/assessments/${id}/challenge-review/review`, {

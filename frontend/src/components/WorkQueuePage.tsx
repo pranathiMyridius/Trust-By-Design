@@ -141,8 +141,8 @@ export default function WorkQueuePage({ onOpenAssessment }: WorkQueuePageProps) 
   }, []);
 
   return (
-    <>
-      <div className="page-header">
+    <div className="wq-page">
+      <div className="page-header wq-header">
         <div>
           <h2>My Work Queue</h2>
           <p>Assessments waiting on you, and anything escalated to you.</p>
@@ -156,26 +156,26 @@ export default function WorkQueuePage({ onOpenAssessment }: WorkQueuePageProps) 
 
       {queue && (
         <>
-          <section className="stats-grid">
+          <section className="stats-grid wq-stats">
             <div className="stat-card">
               <span>My tasks</span>
               <strong>{queue.tasks.length}</strong>
             </div>
-            <div className="stat-card">
+            <div className={`stat-card${queue.overdue_count ? " wq-stat-danger" : ""}`}>
               <span>Overdue</span>
               <strong className={queue.overdue_count ? "wf-text-danger" : ""}>
                 {queue.overdue_count > 0 && <span aria-hidden="true">⚠ </span>}
                 {queue.overdue_count}
               </strong>
             </div>
-            <div className="stat-card">
+            <div className={`stat-card${queue.at_risk_count ? " wq-stat-warning" : ""}`}>
               <span>At risk</span>
               <strong className={queue.at_risk_count ? "wf-text-warning" : ""}>
                 {queue.at_risk_count > 0 && <span aria-hidden="true">◔ </span>}
                 {queue.at_risk_count}
               </strong>
             </div>
-            <div className="stat-card">
+            <div className={`stat-card${queue.escalations.length ? " wq-stat-danger" : ""}`}>
               <span>Escalated to me</span>
               <strong className={queue.escalations.length ? "wf-text-danger" : ""}>{queue.escalations.length}</strong>
             </div>
@@ -183,9 +183,12 @@ export default function WorkQueuePage({ onOpenAssessment }: WorkQueuePageProps) 
 
           {queue.escalations.length > 0 && (
             <section className="content-card wf-queue-section">
-              <div className="card-header">
-                <h3>Escalations</h3>
-                <p>Overdue assessments escalated to you for follow-up.</p>
+              <div className="card-header wq-section-header">
+                <div>
+                  <h3>Escalations</h3>
+                  <p>Overdue assessments escalated to you for follow-up.</p>
+                </div>
+                <span className="wq-count">{queue.escalations.length}</span>
               </div>
               <QueueTable items={queue.escalations} onOpen={onOpenAssessment} showEscalation />
             </section>
@@ -193,11 +196,15 @@ export default function WorkQueuePage({ onOpenAssessment }: WorkQueuePageProps) 
 
           {(queue.reassessment_alerts ?? []).length > 0 && (
             <section className="content-card wf-queue-section">
-              <div className="card-header">
-                <h3>Reassessments due</h3>
-                <p>Approved assessments with an open reassessment trigger: expired or due approvals and flagged changes.</p>
+              <div className="card-header wq-section-header">
+                <div>
+                  <h3>Reassessments due</h3>
+                  <p>Approved assessments with an open reassessment trigger: expired or due approvals and flagged changes.</p>
+                </div>
+                <span className="wq-count">{(queue.reassessment_alerts ?? []).length}</span>
               </div>
-              <table className="risk-table">
+              <div className="wf-table-wrap">
+              <table className="risk-table wq-table">
                 <thead>
                   <tr>
                     <th scope="col">Assessment</th>
@@ -234,16 +241,21 @@ export default function WorkQueuePage({ onOpenAssessment }: WorkQueuePageProps) 
                   ))}
                 </tbody>
               </table>
+              </div>
             </section>
           )}
 
           {(queue.action_escalations ?? []).length > 0 && (
             <section className="content-card wf-queue-section">
-              <div className="card-header">
-                <h3>Escalated action items</h3>
-                <p>Overdue remediation actions on assessments you own or review (R13.3).</p>
+              <div className="card-header wq-section-header">
+                <div>
+                  <h3>Escalated action items</h3>
+                  <p>Overdue remediation actions on assessments you own or review (R13.3).</p>
+                </div>
+                <span className="wq-count">{(queue.action_escalations ?? []).length}</span>
               </div>
-              <table className="risk-table">
+              <div className="wf-table-wrap">
+              <table className="risk-table wq-table">
                 <thead>
                   <tr>
                     <th scope="col">Assessment</th>
@@ -272,18 +284,23 @@ export default function WorkQueuePage({ onOpenAssessment }: WorkQueuePageProps) 
                   ))}
                 </tbody>
               </table>
+              </div>
             </section>
           )}
 
           <section className="content-card wf-queue-section">
-            <div className="card-header">
-              <h3>Tasks</h3>
-              <p>Assessments where you are responsible for the next action.</p>
+            <div className="card-header wq-section-header">
+              <div>
+                <h3>Tasks</h3>
+                <p>Assessments where you are responsible for the next action.</p>
+              </div>
+              <span className="wq-count">{queue.tasks.length}</span>
             </div>
             {queue.tasks.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">✓</div>
                 <h3>Nothing waiting on you right now.</h3>
+                <p>You are all caught up. New tasks and escalations will appear here.</p>
               </div>
             ) : (
               <QueueTable items={queue.tasks} onOpen={onOpenAssessment} />
@@ -291,6 +308,6 @@ export default function WorkQueuePage({ onOpenAssessment }: WorkQueuePageProps) 
           </section>
         </>
       )}
-    </>
+    </div>
   );
 }

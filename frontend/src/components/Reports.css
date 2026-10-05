@@ -495,3 +495,133 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* =========================================
+   Reports — visual refresh
+   ========================================= */
+
+.rp-page { display: block; }
+
+/* Toolbar card: presets + dates */
+.rp-controls {
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  background: #ffffff;
+  border: 1px solid var(--rp-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  align-items: center;
+}
+
+.rp-preset {
+  padding: 7px 14px;
+  border-color: #e5e7eb;
+  background: #f9fafb;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.rp-preset:hover { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
+.rp-preset.active { background: #172033; border-color: #172033; color: #ffffff; }
+.rp-preset:focus-visible, .rp-tab:focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+
+.rp-dates input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
+
+/* Tabs as a segmented control */
+.rp-tabs {
+  display: inline-flex;
+  max-width: 100%;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 14px;
+  background: #eef1f5;
+  border: 0;
+  border-radius: 10px;
+}
+.rp-tab {
+  padding: 8px 16px;
+  margin-bottom: 0;
+  border-bottom: 0;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+.rp-tab:hover { color: var(--rp-text); }
+.rp-tab.active {
+  background: #ffffff;
+  color: var(--rp-text);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+}
+
+.rp-meta {
+  display: inline-block;
+  padding: 5px 12px;
+  margin-bottom: 18px;
+  background: #f9fafb;
+  border: 1px solid var(--rp-border);
+  border-radius: 999px;
+}
+
+/* KPI tiles */
+.rp-stat, .rp-metric {
+  padding: 16px 18px;
+  border-top: 3px solid #4f46e5;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.rp-stat span, .rp-metric span {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rp-stat strong, .rp-metric strong { font-size: 28px; line-height: 1.1; }
+
+/* Panels */
+.rp-panel {
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.rp-panel header {
+  margin: 0;
+  padding: 14px 18px;
+  background: #fcfcfd;
+  border-bottom: 1px solid #eaecf0;
+}
+.rp-panel > :not(header) { margin-left: 18px; margin-right: 18px; }
+.rp-panel > header + * { margin-top: 14px; }
+.rp-panel > :last-child:not(header) { margin-bottom: 16px; }
+
+/* Bars */
+.rp-bar-row { padding: 6px 6px; }
+.rp-bar-track { height: 12px; border-radius: 999px; }
+.rp-bar-fill {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4f46e5, #2a78d6);
+}
+
+/* Tables */
+.rp-table th { background: #f9fafb; padding: 10px 12px; }
+.rp-table td { padding: 11px 12px; }
+.rp-table tbody tr:hover { background: #fafbff; }
+.rp-table tbody tr:last-child td { border-bottom: 0; }
+.rp-table-foot { padding: 10px 0 0; }
+
+/* Cards in the high-risk portfolio */
+.rp-card {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.rp-card:hover { border-color: #c7d2fe; box-shadow: 0 4px 12px rgba(16, 24, 40, 0.08); }
+.rp-facts { padding: 12px 14px; background: #f9fafb; border-radius: 8px; }
+
+.rp-empty {
+  padding: 18px;
+  text-align: center;
+  background: #f9fafb;
+  border: 1px dashed #d0d5dd;
+  border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+  .rp-controls { padding: 12px; }
+  .rp-tabs { display: flex; }
+  .rp-stat strong, .rp-metric strong { font-size: 22px; }
+}

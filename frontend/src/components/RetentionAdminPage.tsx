@@ -25,26 +25,26 @@ import {
 } from "../api/retention";
 import { friendlyError } from "../utils/errorMessages";
 
-const VERSION_STYLE: Record<VersionStatus, [string, string, string]> = {
-  PROPOSED: ["#fef9c3", "#854d0e", "Pending approval"],
-  ACTIVE: ["#dcfce7", "#166534", "Active"],
-  SUPERSEDED: ["#e5e7eb", "#4b5563", "Superseded"],
-  REJECTED: ["#fee2e2", "#991b1b", "Rejected"],
+const VERSION_STYLE: Record<VersionStatus, [string, string]> = {
+  PROPOSED: ["warn", "Pending approval"],
+  ACTIVE: ["ok", "Active"],
+  SUPERSEDED: ["grey", "Superseded"],
+  REJECTED: ["danger", "Rejected"],
 };
 
-const ELIGIBILITY_STYLE: Record<EligibilityStatus, [string, string]> = {
-  ELIGIBLE: ["#dbeafe", "#1e40af"],
-  RETAINED: ["#f3f4f6", "#374151"],
-  LEGAL_HOLD: ["#ffe4e6", "#9f1239"],
-  NOT_STARTED: ["#f3f4f6", "#374151"],
-  INVALID_DATE: ["#fef3c7", "#92400e"],
-  NO_POLICY: ["#fef3c7", "#92400e"],
-  INVALID_POLICY: ["#fef3c7", "#92400e"],
-  SOFT_DELETED: ["#e5e7eb", "#4b5563"],
+const ELIGIBILITY_TONE: Record<EligibilityStatus, string> = {
+  ELIGIBLE: "info",
+  RETAINED: "grey",
+  LEGAL_HOLD: "rose",
+  NOT_STARTED: "grey",
+  INVALID_DATE: "amber",
+  NO_POLICY: "amber",
+  INVALID_POLICY: "amber",
+  SOFT_DELETED: "grey",
 };
 
-function Badge({ background, color, children }: { background: string; color: string; children: React.ReactNode }) {
-  return <span style={{ background, color, borderRadius: 4, padding: "1px 6px", fontSize: 12, whiteSpace: "nowrap" }}>{children}</span>;
+function Badge({ tone, children }: { tone: string; children: React.ReactNode }) {
+  return <span className={`ret-badge ret-badge-${tone}`}>{children}</span>;
 }
 
 function when(value: string | null) {
@@ -57,7 +57,7 @@ function day(value: string | null) {
 
 export function RetentionPolicyBanner() {
   return (
-    <p role="note" style={{ margin: "0 0 12px", padding: "6px 10px", borderRadius: 6, background: "#fff7ed", color: "#9a3412", fontSize: 13 }}>
+    <p role="note" className="ret-banner">
       <strong>Provisional: {POLICY_PENDING_LABEL}.</strong> Retention periods, bounds and approval rules are provisional defaults.
       Periods are not compliance-approved.
     </p>
@@ -92,20 +92,20 @@ function DecisionPanel({ version, onDone }: { version: PolicyVersion; onDone: ()
 
   if (!allowed) {
     return (
-      <p style={{ fontSize: 13, color: "#6b7280", margin: "8px 0 0" }}>
+      <p className="ret-muted ret-note">
         You can't decide this proposal: {version.actions?.decide.reason ?? "not permitted."}
       </p>
     );
   }
   return (
-    <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+    <div className="ret-decision">
+      <label className="ret-field">
         Decision reason (required)
         <textarea aria-label="Decision reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
       </label>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="ret-actions">
         <button className="primary-button" disabled={busy} onClick={() => run("APPROVE")}>Approve proposal</button>
-        <button className="doc-action-button" disabled={busy} onClick={() => run("REJECT")}>Reject proposal</button>
+        <button className="secondary-button" disabled={busy} onClick={() => run("REJECT")}>Reject proposal</button>
       </div>
       {error && <p role="alert" className="field-error">{error}</p>}
     </div>
@@ -145,27 +145,27 @@ function ProposeForm({ recordType, permissions, onDone }: { recordType: string; 
   }
 
   return (
-    <div style={{ display: "grid", gap: 8, gridTemplateColumns: "minmax(140px, 200px) 1fr", alignItems: "start" }}>
-      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+    <div className="ret-propose">
+      <label className="ret-field">
         Proposed period (days)
         <input aria-label="Proposed retention days" type="number" min={permissions.min_retention_days} max={permissions.max_retention_days} value={days} onChange={(e) => setDays(e.target.value)} />
       </label>
-      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+      <label className="ret-field">
         Business justification (required, at least {permissions.min_reason_length} characters)
         <textarea aria-label="Change justification" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
       </label>
-      <div style={{ gridColumn: "1 / -1" }}>
+      <div className="ret-propose-actions">
         <button className="primary-button" disabled={busy} onClick={submit}>
           {permissions.require_independent_approval ? "Submit for independent approval" : "Apply change"}
         </button>
-        <span style={{ marginLeft: 8, fontSize: 12, color: "#6b7280" }}>
+        <span className="ret-muted ret-small">
           {permissions.require_independent_approval
             ? `Takes effect only when approved by another user who is: ${permissions.approvers}.`
             : "Independent approval is switched off in configuration; the change applies at once (still versioned and audited)."}
         </span>
       </div>
       {errors.length > 0 && (
-        <ul role="alert" className="field-error" style={{ gridColumn: "1 / -1", margin: 0 }}>
+        <ul role="alert" className="field-error ret-errors">
           {errors.map((e) => <li key={e}>{e}</li>)}
         </ul>
       )}
@@ -176,25 +176,27 @@ function ProposeForm({ recordType, permissions, onDone }: { recordType: string; 
 function RecordTypeCard({ policies, permissions, onChange }: { policies: RecordTypePolicies; permissions: RetentionPermissions; onChange: () => void }) {
   const { active, pending } = policies;
   return (
-    <section className="content-card" aria-label={`${policies.record_type} retention policy`}>
-      <h3 style={{ marginTop: 0 }}>
-        {policies.record_type} records <span style={{ fontSize: 13, fontWeight: 400, color: "#6b7280" }}>· period runs from {policies.basis.replace(/_/g, " ").toLowerCase()}</span>
-      </h3>
+    <section className="content-card ret-card" aria-label={`${policies.record_type} retention policy`}>
+      <header className="ret-card-header">
+        <h3>{policies.record_type} records</h3>
+        <span className="ret-muted">Period runs from {policies.basis.replace(/_/g, " ").toLowerCase()}</span>
+      </header>
+      <div className="ret-card-body">
       {active ? (
-        <p style={{ margin: "0 0 8px" }}>
+        <p className="ret-inforce">
           In force: <strong data-testid="active-retention-days">{active.retention_days} days</strong> (version {active.version}, since {day(active.effective_from)}){" "}
-          <Badge background="#fff7ed" color="#9a3412">{POLICY_PENDING_LABEL}</Badge>
+          <Badge tone="amber">{POLICY_PENDING_LABEL}</Badge>
         </p>
       ) : (
         <p role="alert" className="field-error">No version is in force: no record of this type is ever eligible.</p>
       )}
 
       {pending && (
-        <div style={{ border: "1px solid #fde68a", borderRadius: 6, padding: 10, margin: "8px 0" }} aria-label="Pending proposal">
+        <div className="ret-pending" aria-label="Pending proposal">
           <strong>Pending proposal (version {pending.version})</strong>
-          <table style={{ width: "100%", fontSize: 13, marginTop: 6, borderCollapse: "collapse" }}>
+          <table className="ret-mini-table">
             <thead>
-              <tr><th style={{ textAlign: "left" }}></th><th style={{ textAlign: "left" }}>Current</th><th style={{ textAlign: "left" }}>Proposed</th></tr>
+              <tr><th></th><th>Current</th><th>Proposed</th></tr>
             </thead>
             <tbody>
               <tr><td>Retention period</td><td>{pending.previous_retention_days ?? "—"} days</td><td><strong>{pending.retention_days} days</strong></td></tr>
@@ -208,43 +210,44 @@ function RecordTypeCard({ policies, permissions, onChange }: { policies: RecordT
 
       {permissions.can_propose && !pending && (
         <>
-          <h4 style={{ margin: "12px 0 6px", fontSize: 14 }}>Propose a new period</h4>
+          <h4 className="ret-subtitle">Propose a new period</h4>
           <ProposeForm recordType={policies.record_type} permissions={permissions} onDone={onChange} />
         </>
       )}
       {!permissions.can_propose && (
-        <p style={{ fontSize: 12, color: "#6b7280" }}>Proposing a change needs: {permissions.proposers}.</p>
+        <p className="ret-muted ret-small">Proposing a change needs: {permissions.proposers}.</p>
       )}
 
-      <h4 style={{ margin: "12px 0 6px", fontSize: 14 }}>Version history (read-only)</h4>
-      <div style={{ overflowX: "auto" }}>
-        <table aria-label={`${policies.record_type} version history`} style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+      <h4 className="ret-subtitle">Version history (read-only)</h4>
+      <div className="ret-table-wrap">
+        <table aria-label={`${policies.record_type} version history`} className="ret-table">
           <thead>
-            <tr style={{ textAlign: "left" }}>
+            <tr>
               <th>Version</th><th>Status</th><th>Period</th><th>Previous</th><th>Effective from</th><th>Proposed by</th><th>Decided by</th><th>Reasons</th>
             </tr>
           </thead>
           <tbody>
             {policies.versions.map((v) => {
-              const [bg, fg, label] = VERSION_STYLE[v.status];
+              const [tone, label] = VERSION_STYLE[v.status];
               return (
-                <tr key={v.id} style={{ borderTop: "1px solid #e5e7eb", verticalAlign: "top" }}>
+                <tr key={v.id}>
                   <td>v{v.version}</td>
-                  <td><Badge background={bg} color={fg}>{label}</Badge></td>
+                  <td><Badge tone={tone}>{label}</Badge></td>
                   <td>{v.retention_days} days</td>
                   <td>{v.previous_retention_days != null ? `${v.previous_retention_days} days` : "—"}</td>
                   <td>{day(v.effective_from)}</td>
-                  <td>{v.proposed_by ?? "—"}<br /><span style={{ color: "#6b7280" }}>{when(v.proposed_at)}</span></td>
-                  <td>{v.decided_by ?? "—"}<br /><span style={{ color: "#6b7280" }}>{when(v.decided_at)}</span></td>
+                  <td>{v.proposed_by ?? "—"}<br /><span className="ret-muted">{when(v.proposed_at)}</span></td>
+                  <td>{v.decided_by ?? "—"}<br /><span className="ret-muted">{when(v.decided_at)}</span></td>
                   <td>
                     <div>{v.change_reason}</div>
-                    {v.decision_reason && v.decision_reason !== v.change_reason && <div style={{ color: "#6b7280" }}>Decision: {v.decision_reason}</div>}
+                    {v.decision_reason && v.decision_reason !== v.change_reason && <div className="ret-muted">Decision: {v.decision_reason}</div>}
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+      </div>
       </div>
     </section>
   );
@@ -268,27 +271,30 @@ function LegalHoldsSection() {
   }, [currentOnly]);
 
   return (
-    <section className="content-card" aria-label="Legal holds">
-      <h3 style={{ marginTop: 0 }}>Legal holds</h3>
-      <p style={{ fontSize: 13, color: "#6b7280", marginTop: 0 }}>
+    <section className="content-card ret-card" aria-label="Legal holds">
+      <header className="ret-card-header">
+        <h3>Legal holds</h3>
+        <label className="ret-check">
+          <input type="checkbox" checked={currentOnly} onChange={(e) => setCurrentOnly(e.target.checked)} /> Current holds only
+        </label>
+      </header>
+      <div className="ret-card-body">
+      <p className="ret-muted ret-intro">
         Holds are placed and released (each with a reason) from the assessment's Retention panel. A hold overrides retention
         eligibility until a different authorized user releases it. Released holds stay in the history.
       </p>
-      <label style={{ fontSize: 13 }}>
-        <input type="checkbox" checked={currentOnly} onChange={(e) => setCurrentOnly(e.target.checked)} /> Current holds only
-      </label>
       {error && <p role="alert" className="field-error">{error}</p>}
       {rows === null ? (
         <p>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ fontSize: 13 }}>No legal holds {currentOnly ? "in place" : "recorded"} on assessments you can see.</p>
+        <p className="ret-empty">No legal holds {currentOnly ? "in place" : "recorded"} on assessments you can see.</p>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0, margin: "8px 0 0", display: "grid", gap: 8 }}>
+        <ul className="ret-holds">
           {rows.map((row) => (
-            <li key={row.assessment_id} style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: 8, fontSize: 13 }}>
+            <li key={row.assessment_id} className="ret-hold">
               <strong>{row.reference ?? `Assessment #${row.assessment_id}`}</strong>{" "}
-              {row.legal_hold ? <Badge background="#ffe4e6" color="#9f1239">On hold</Badge> : <Badge background="#e5e7eb" color="#4b5563">Released</Badge>}
-              <ol style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+              {row.legal_hold ? <Badge tone="rose">On hold</Badge> : <Badge tone="grey">Released</Badge>}
+              <ol className="ret-history">
                 {row.history.map((h) => (
                   <li key={h.id}>
                     {when(h.at)} — <strong>{h.action === "SET" ? "Placed" : "Released"}</strong> by {h.actor}: {h.reason}
@@ -300,6 +306,7 @@ function LegalHoldsSection() {
           ))}
         </ul>
       )}
+      </div>
     </section>
   );
 }
@@ -337,29 +344,31 @@ function EligibilityReportSection({ canIncludeDeleted }: { canIncludeDeleted: bo
   }
 
   const pages = report ? Math.max(1, Math.ceil(report.total / report.page_size)) : 1;
-  const control: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 4, fontSize: 13 };
 
   return (
-    <section className="content-card" aria-label="Retention eligibility report">
-      <h3 style={{ marginTop: 0 }}>Retention eligibility report (read-only)</h3>
-      <p style={{ fontSize: 13, color: "#6b7280", marginTop: 0 }}>
+    <section className="content-card ret-card" aria-label="Retention eligibility report">
+      <header className="ret-card-header">
+        <h3>Retention eligibility report (read-only)</h3>
+      </header>
+      <div className="ret-card-body">
+      <p className="ret-muted ret-intro">
         Calculated by the server from the policy version in force. Eligibility means a record may be put forward for a
         controlled lifecycle review. It does not authorize deletion, and nothing is purged. Assessment content is not shown.
       </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "end", marginBottom: 10 }}>
-        <label style={control}>
+      <div className="ret-filters">
+        <label className="ret-field">
           Status
           <select aria-label="Eligibility status filter" value={filters.status} onChange={(e) => update({ status: e.target.value })}>
             {STATUS_FILTERS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
         {filters.status === "upcoming" && (
-          <label style={control}>
+          <label className="ret-field">
             Within (days)
-            <input aria-label="Within days" type="number" min={0} style={{ width: 90 }} value={filters.within_days} onChange={(e) => update({ within_days: e.target.value })} />
+            <input aria-label="Within days" type="number" min={0} className="ret-narrow" value={filters.within_days} onChange={(e) => update({ within_days: e.target.value })} />
           </label>
         )}
-        <label style={control}>
+        <label className="ret-field">
           Legal hold
           <select aria-label="Legal hold filter" value={filters.legal_hold} onChange={(e) => update({ legal_hold: e.target.value as ReportFilters["legal_hold"] })}>
             <option value="">Any</option>
@@ -367,19 +376,19 @@ function EligibilityReportSection({ canIncludeDeleted }: { canIncludeDeleted: bo
             <option value="false">Not on hold</option>
           </select>
         </label>
-        <label style={control}>
+        <label className="ret-field">
           Policy version id
-          <input aria-label="Policy version filter" style={{ width: 90 }} value={filters.policy_version_id ?? ""} onChange={(e) => update({ policy_version_id: e.target.value.replace(/\D/g, "") })} />
+          <input aria-label="Policy version filter" className="ret-narrow" value={filters.policy_version_id ?? ""} onChange={(e) => update({ policy_version_id: e.target.value.replace(/\D/g, "") })} />
         </label>
-        <label style={control}>
+        <label className="ret-field">
           Decided from
           <input aria-label="Decided from" type="date" value={filters.basis_from ?? ""} onChange={(e) => update({ basis_from: e.target.value })} />
         </label>
-        <label style={control}>
+        <label className="ret-field">
           Decided to
           <input aria-label="Decided to" type="date" value={filters.basis_to ?? ""} onChange={(e) => update({ basis_to: e.target.value })} />
         </label>
-        <label style={control}>
+        <label className="ret-field">
           Sort by
           <select aria-label="Sort by" value={`${filters.sort}:${filters.order}`} onChange={(e) => { const [sort, order] = e.target.value.split(":"); update({ sort: sort as ReportFilters["sort"], order: order as ReportFilters["order"] }); }}>
             <option value="eligible_at:asc">Eligibility date (earliest)</option>
@@ -389,7 +398,7 @@ function EligibilityReportSection({ canIncludeDeleted }: { canIncludeDeleted: bo
           </select>
         </label>
         {canIncludeDeleted && (
-          <label style={{ fontSize: 13 }}>
+          <label className="ret-check">
             <input type="checkbox" checked={!!filters.include_deleted} onChange={(e) => update({ include_deleted: e.target.checked })} /> Include soft-deleted
           </label>
         )}
@@ -397,7 +406,7 @@ function EligibilityReportSection({ canIncludeDeleted }: { canIncludeDeleted: bo
 
       {error && <p role="alert" className="field-error">{error}</p>}
       {report && (
-        <p style={{ fontSize: 13, margin: "0 0 8px" }} aria-label="Report summary">
+        <p className="ret-summary" aria-label="Report summary">
           {Object.entries(report.summary).filter(([, n]) => n > 0).map(([code, n]) => `${ELIGIBILITY_LABEL[code as EligibilityStatus]}: ${n}`).join(" · ") || "No records in scope."}
           {report.active_policy && ` · Policy in force: v${report.active_policy.version}, ${report.active_policy.retention_days} days (${POLICY_PENDING_LABEL})`}
         </p>
@@ -405,27 +414,27 @@ function EligibilityReportSection({ canIncludeDeleted }: { canIncludeDeleted: bo
       {!report && !error ? (
         <p>Loading…</p>
       ) : report && report.items.length === 0 ? (
-        <p style={{ fontSize: 13 }}>No records match these filters.</p>
+        <p className="ret-empty">No records match these filters.</p>
       ) : report ? (
-        <div style={{ overflowX: "auto" }}>
-          <table aria-label="Eligibility results" style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+        <div className="ret-table-wrap">
+          <table aria-label="Eligibility results" className="ret-table">
             <thead>
-              <tr style={{ textAlign: "left" }}>
+              <tr>
                 <th>Record</th><th>Type</th><th>Policy</th><th>Retention start</th><th>Eligibility date</th><th>Status</th><th>Legal hold</th><th>Explanation</th>
               </tr>
             </thead>
             <tbody>
               {report.items.map((row) => {
-                const [bg, fg] = ELIGIBILITY_STYLE[row.eligibility_status];
+                const tone = ELIGIBILITY_TONE[row.eligibility_status];
                 return (
-                  <tr key={row.record_id} data-testid={`eligibility-row-${row.record_id}`} style={{ borderTop: "1px solid #e5e7eb", verticalAlign: "top" }}>
-                    <td>{row.reference ?? `#${row.record_id}`}<br /><span style={{ color: "#6b7280" }}>{row.assessment_status}</span></td>
+                  <tr key={row.record_id} data-testid={`eligibility-row-${row.record_id}`}>
+                    <td>{row.reference ?? `#${row.record_id}`}<br /><span className="ret-muted">{row.assessment_status}</span></td>
                     <td>{row.record_type}</td>
                     <td>{row.policy_version != null ? `v${row.policy_version} (${row.retention_days} d)` : "—"}</td>
                     <td>{day(row.basis_date)}</td>
                     <td>{day(row.eligible_at)}</td>
-                    <td><Badge background={bg} color={fg}>{ELIGIBILITY_LABEL[row.eligibility_status]}</Badge></td>
-                    <td>{row.legal_hold ? "Yes" : "No"}</td>
+                    <td><Badge tone={tone}>{ELIGIBILITY_LABEL[row.eligibility_status]}</Badge></td>
+                    <td>{row.legal_hold ? <Badge tone="rose">Yes</Badge> : "No"}</td>
                     <td>{row.reason}</td>
                   </tr>
                 );
@@ -435,12 +444,13 @@ function EligibilityReportSection({ canIncludeDeleted }: { canIncludeDeleted: bo
         </div>
       ) : null}
       {report && report.total > report.page_size && (
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 13 }}>
-          <button className="doc-action-button" disabled={(filters.page ?? 1) <= 1} onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) - 1 }))}>Previous</button>
+        <div className="ret-pager">
+          <button className="secondary-button" disabled={(filters.page ?? 1) <= 1} onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) - 1 }))}>Previous</button>
           Page {report.page} of {pages} ({report.total} records)
-          <button className="doc-action-button" disabled={(filters.page ?? 1) >= pages} onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}>Next</button>
+          <button className="secondary-button" disabled={(filters.page ?? 1) >= pages} onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}>Next</button>
         </div>
       )}
+      </div>
     </section>
   );
 }
@@ -464,7 +474,7 @@ export default function RetentionAdminPage({ userRole }: { userRole: string }) {
 
   const permissions = listing?.permissions;
   return (
-    <div>
+    <div className="ret-page">
       <div className="page-header">
         <div>
           <h2>Retention &amp; Legal Holds</h2>
@@ -486,8 +496,8 @@ export default function RetentionAdminPage({ userRole }: { userRole: string }) {
           {permissions.can_read_report ? (
             <EligibilityReportSection canIncludeDeleted={userRole === "ADMIN" || userRole === "AUDITOR"} />
           ) : (
-            <section className="content-card">
-              <p style={{ fontSize: 13, margin: 0 }}>The eligibility report is available to authorized report readers only.</p>
+            <section className="content-card ret-card">
+              <p className="ret-empty">The eligibility report is available to authorized report readers only.</p>
             </section>
           )}
         </>

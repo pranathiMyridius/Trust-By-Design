@@ -18,6 +18,10 @@ const PAGE_SIZE = 10;
 
 const ALL_CHANGE_TYPES = [...CHANGE_TYPES, ...LEGACY_CHANGE_TYPES];
 
+function changeTypeLabel(value: string): string {
+  return ALL_CHANGE_TYPES.find((t) => t.value === value)?.label ?? value;
+}
+
 function AssessmentsPage({
   assessments,
   onSelectAssessment,
@@ -111,8 +115,8 @@ function AssessmentsPage({
   }
 
   return (
-    <>
-      <div className="page-header">
+    <div className="assessments-page">
+      <div className="page-header assessments-header">
         <div>
           <h2>Assessments</h2>
           <p>
@@ -128,8 +132,8 @@ function AssessmentsPage({
         </button>
       </div>
 
-      <section className="content-card">
-        <div className="card-header">
+      <section className="content-card assessments-card">
+        <div className="card-header assessments-card-header">
           <div>
             <h3>All Assessments</h3>
             <p>
@@ -139,18 +143,8 @@ function AssessmentsPage({
         </div>
 
         {assessments.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-              alignItems: "flex-end",
-              marginBottom: 16,
-              paddingBottom: 16,
-              borderBottom: "1px solid #e5e7eb",
-            }}
-          >
-            <div className="form-group" style={{ margin: 0 }}>
+          <div className="assessments-filters">
+            <div className="form-group assessments-filter">
               <label htmlFor="filter-change-type">Change type</label>
               <select
                 id="filter-change-type"
@@ -170,7 +164,7 @@ function AssessmentsPage({
             </div>
 
             {orgOptions.entities.length > 0 && (
-              <div className="form-group" style={{ margin: 0 }}>
+              <div className="form-group assessments-filter">
                 <label htmlFor="filter-legal-entity">Legal entity</label>
                 <select
                   id="filter-legal-entity"
@@ -191,7 +185,7 @@ function AssessmentsPage({
             )}
 
             {orgOptions.units.length > 0 && (
-              <div className="form-group" style={{ margin: 0 }}>
+              <div className="form-group assessments-filter">
                 <label htmlFor="filter-business-unit">Business unit</label>
                 <select
                   id="filter-business-unit"
@@ -211,7 +205,7 @@ function AssessmentsPage({
               </div>
             )}
 
-            <div className="form-group" style={{ margin: 0 }}>
+            <div className="form-group assessments-filter">
               <label htmlFor="filter-created-from">Created on/after</label>
               <input
                 id="filter-created-from"
@@ -224,7 +218,7 @@ function AssessmentsPage({
               />
             </div>
 
-            <div className="form-group" style={{ margin: 0 }}>
+            <div className="form-group assessments-filter">
               <label htmlFor="filter-created-to">Created on/before</label>
               <input
                 id="filter-created-to"
@@ -247,7 +241,7 @@ function AssessmentsPage({
               </button>
             )}
 
-            <span style={{ color: "#667085", fontSize: 13, marginLeft: "auto" }} role="status" aria-live="polite">
+            <span className="assessments-count" role="status" aria-live="polite">
               {filteredAssessments.length} of {assessments.length} assessment
               {assessments.length === 1 ? "" : "s"}
             </span>
@@ -295,17 +289,18 @@ function AssessmentsPage({
                     label: `Open assessment ${assessment.title}`,
                   })}
                 >
-                  <div>
+                  <div className="assessment-info">
                     <h4>{assessment.title}</h4>
 
+                    <div className="assessment-tags">
                     {assessment.reference_id && (
-                      <span className="change-type">
+                      <span className="change-type assessment-ref">
                         {assessment.reference_id}
                       </span>
                     )}
 
                     <span className="change-type">
-                      {assessment.change_type}
+                      {changeTypeLabel(assessment.change_type)}
                     </span>
 
                     {assessment.priority && (
@@ -317,6 +312,7 @@ function AssessmentsPage({
                     {assessment.is_draft && (
                       <span className="draft-pill">Draft</span>
                     )}
+                    </div>
                   </div>
 
                   <div className="assessment-status">
@@ -326,9 +322,9 @@ function AssessmentsPage({
                     </span>
 
                     {assessment.overall_score != null || assessment.risk_level ? (
-  <AssessmentScore score={assessment.overall_score} level={assessment.risk_level} />
-) : (
-                      <span>NOT ANALYZED</span>
+                      <AssessmentScore score={assessment.overall_score} level={assessment.risk_level} />
+                    ) : (
+                      <span className="assessment-not-analyzed">Not analyzed</span>
                     )}
                   </div>
                 </div>
@@ -363,7 +359,7 @@ function AssessmentsPage({
           </>
         )}
       </section>
-    </>
+    </div>
   );
 }
 

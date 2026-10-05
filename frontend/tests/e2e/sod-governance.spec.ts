@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { API, USERS, api, login, openAssessment, openFromMore, stage, toCommittee, toManagerReview, token, unique } from "./helpers";
+import { API, USERS, api, confirmPendingOverrides, login, openAssessment, openFromMore, stage, toCommittee, toManagerReview, token, unique } from "./helpers";
 
 // P3 (provisional policy -- pending governance approval): SoD exceptions,
 // Admin/committee separation, override and challenge-review duties, and
@@ -157,6 +157,8 @@ test.describe("SoD and governance enforcement", () => {
     // The independent review and the approval (different people).
     await api(request, "reviewer", "PATCH", `/api/assessments/${id}/overrides/${proposed.id}/review`, { decision: "CONFIRM", note: "Contract confirms Ukraine." });
     await api(request, "head", "PATCH", `/api/assessments/${id}/overrides/${proposed.id}/approval`, { decision: "APPROVE", rationale: "Material and justified." });
+    // The analyst's ratings differ from the AI's, so those overrides await review too.
+    await confirmPendingOverrides(request, id);
 
     // 7. The independent challenge review, in the UI, by the reviewer.
     await page.getByRole("button", { name: /^Account:/ }).click();
@@ -176,6 +178,8 @@ test.describe("SoD and governance enforcement", () => {
     await page.getByRole("menuitem", { name: "Sign out" }).click();
     await login(page, "manager");
     await openAssessment(page, title);
+    // The reviewer left this browser on Human Review; the manager signs off on the Approval screen.
+    await stage(page, "Approval").click();
     const managerChallenge = page.getByRole("region", { name: "Challenge review (mandatory)" }).first();
     await managerChallenge.getByRole("textbox", { name: "Sign off challenge review: summary (required)" }).fill("Reviewed and agreed.");
     await managerChallenge.getByRole("button", { name: "Sign off challenge review" }).click();

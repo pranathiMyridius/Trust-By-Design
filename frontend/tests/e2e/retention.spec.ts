@@ -172,7 +172,8 @@ test.describe.serial("Retention policy, legal holds and eligibility", () => {
     // 8 (after). The report reflects the new status.
     const row = await reportRow(request, await token(request, "admin"), id);
     expect(row?.legal_hold).toBe(false);
-    expect(row?.eligibility_status).toBe("NOT_STARTED");
+    // A decided assessment is back to its normal retention once the hold is released.
+    expect(row?.eligibility_status).toBe("RETAINED");
   });
 
   test("an Auditor reads the report within scope but changes nothing; others are refused", async ({ page, request }) => {

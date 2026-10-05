@@ -31,7 +31,7 @@ export default function ApprovalsPage({
   const queue = buildQueue(user, assessments, delegations);
 
   return (
-    <div>
+    <div className="approvals-page">
       <div className="page-header">
         <div>
           <h2>Approvals</h2>
@@ -44,13 +44,18 @@ export default function ApprovalsPage({
         </div>
       </div>
 
-      <section className="content-card">
+      <section className="content-card approvals-card">
+        <header className="approvals-card-header">
+          <h3>Pending decisions</h3>
+          {queue.length > 0 && <span className="approvals-count">{queue.length}</span>}
+        </header>
         {queue.length === 0 ? (
-          <div className="empty-state">
-            <h3>Nothing waiting on you right now.</h3>
+          <div className="approvals-empty">
+            <h4>Nothing waiting on you right now.</h4>
+            <p>New submissions that need your decision will appear here.</p>
           </div>
         ) : (
-          <div className="assessment-list">
+          <div className="approvals-list">
             {queue.map((item) => (
               <ApprovalRow
                 key={`${item.mode}-${item.assessment.id}`}
@@ -123,35 +128,33 @@ function ApprovalRow({
   onDecisionRecorded: () => void;
 }) {
   return (
-    <div className="assessment-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
+    <div className="approval-item">
+      <div className="approval-item-main">
+        <div className="approval-item-info">
           <h4>
             <button type="button" className="row-link-button" onClick={onOpen}>
               {assessment.title}
               <span className="sr-only"> — open assessment</span>
             </button>
           </h4>
-          <span className="change-type">
-            {assessment.reference_id ?? `ASSESSMENT-${assessment.id}`} &middot; {assessment.status}
-          </span>
+          <div className="approval-meta">
+            <span className="approval-ref">{assessment.reference_id ?? `ASSESSMENT-${assessment.id}`}</span>
+            <span className="approval-status">{statusLabel(assessment.status)}</span>
+            {delegation && <span className="approval-delegate-tag">Delegated</span>}
+          </div>
         </div>
-        <div>
+        <div className="approval-item-side">
           {assessment.risk_level && <RiskLevelBadge level={assessment.risk_level} />}
+          {isManager && (
+            <button type="button" className="primary-button" onClick={onOpen}>
+              Review &amp; Decide
+            </button>
+          )}
         </div>
       </div>
 
       {delegation && isManager && (
-        <p
-          style={{
-            margin: 0,
-            padding: "6px 10px",
-            borderRadius: 6,
-            background: "#eef2ff",
-            color: "#3730a3",
-            fontSize: 13,
-          }}
-        >
+        <p className="approval-delegate-note">
           You are acting as delegate for <strong>{delegation.delegator_name}</strong> (delegation #
           {delegation.id}, until{" "}
           {new Date(delegation.end_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
@@ -159,15 +162,7 @@ function ApprovalRow({
         </p>
       )}
 
-      {isManager ? (
-        // The decision itself is made on the assessment's "Submitted to Manager"
-        // stage, beside the findings; this page is the pending-tasks list.
-        <div>
-          <button className="primary-button" onClick={onOpen}>
-            Review &amp; Decide
-          </button>
-        </div>
-      ) : (
+      {!isManager && (
         <CommitteeDecisionPanel
           assessment={assessment}
           user={user}
@@ -177,4 +172,9 @@ function ApprovalRow({
       )}
     </div>
   );
+}
+
+function statusLabel(status: string): string {
+  const text = status.replace(/_/g, " ").toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

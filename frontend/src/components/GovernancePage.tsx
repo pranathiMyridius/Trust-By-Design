@@ -74,8 +74,7 @@ function ReasonForm({
 
   return (
     <form
-      className="form-group"
-      style={{ margin: "8px 0" }}
+      className="form-group gov-reason-form"
       onSubmit={(event) => {
         event.preventDefault();
         if (!tooShort) onSubmit(reason.trim());
@@ -84,9 +83,9 @@ function ReasonForm({
       <label htmlFor={id}>{label}</label>
       <textarea id={id} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} required />
       {minLength > 1 && (
-        <small style={{ color: "#6b7280" }}>At least {minLength} characters.</small>
+        <small className="gov-hint">At least {minLength} characters.</small>
       )}
-      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+      <div className="gov-form-actions">
         <button type="submit" className="primary-button" disabled={busy || tooShort}>
           {busy ? "Saving…" : submitLabel}
         </button>
@@ -198,8 +197,8 @@ export default function GovernancePage() {
     selected != null && JSON.stringify(draftGrid) !== JSON.stringify(selected.config.residual_grid);
 
   return (
-    <div className="nfr-page">
-      <div className="page-header">
+    <div className="nfr-page gov-page">
+      <div className="page-header gov-header">
         <div>
           <h2>Risk Governance</h2>
           <p>
@@ -227,10 +226,10 @@ export default function GovernancePage() {
 
       {/* ------------------------------------------------------------------ */}
       <section className="content-card nfr-section" aria-labelledby="gov-reference">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <h3 id="gov-reference" style={{ margin: 0 }}>Reference data</h3>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 14 }}>
+        <div className="gov-section-head">
+          <h3 id="gov-reference">Reference data</h3>
+          <div className="gov-section-tools">
+            <label className="gov-check">
               <input type="checkbox" checked={showHistory} onChange={(e) => setShowHistory(e.target.checked)} />
               Show superseded snapshots
             </label>
@@ -263,8 +262,8 @@ export default function GovernancePage() {
             FATF and EU snapshots shipped with the application.
           </p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table className="nfr-table" style={{ width: "100%" }}>
+          <div className="gov-table-wrap">
+            <table className="nfr-table">
               <thead>
                 <tr>
                   <th scope="col">Source</th>
@@ -279,7 +278,7 @@ export default function GovernancePage() {
               </thead>
               <tbody>
                 {snapshots.map((snapshot) => (
-                  <tr key={snapshot.id} style={snapshot.is_current ? undefined : { opacity: 0.6 }}>
+                  <tr key={snapshot.id} className={snapshot.is_current ? undefined : "gov-row-muted"}>
                     <td>
                       {snapshot.source}
                       {!snapshot.is_current && " (superseded)"}
@@ -290,13 +289,13 @@ export default function GovernancePage() {
                       {snapshot.source_claims_verified ? "Yes (self-declared)" : "No"}
                     </td>
                     <td title={snapshot.attestation_note ?? undefined}>
-                      {snapshot.attested ? `${snapshot.attested_by}, ${when(snapshot.attested_at)}` : "Not attested"}
+                      {snapshot.attested ? `${snapshot.attested_by}, ${when(snapshot.attested_at)}` : <span className="gov-pill gov-pill-warn">Not attested</span>}
                     </td>
                     <td>
                       {snapshot.used_in_scoring ? (
-                        <span style={{ color: "#166534" }}>✓ Yes</span>
+                        <span className="gov-pill gov-pill-ok">✓ Yes</span>
                       ) : (
-                        <span style={{ color: "#b45309" }}>No</span>
+                        <span className="gov-pill gov-pill-warn">No</span>
                       )}
                     </td>
                     <td title={snapshot.checksum}><code>{shortHash(snapshot.checksum)}</code></td>
@@ -322,7 +321,7 @@ export default function GovernancePage() {
           .filter((s) => openForm === `attest:${s.id}`)
           .map((snapshot) => (
             <div key={snapshot.id}>
-              <p className="risk-reason" style={{ marginBottom: 0 }}>
+              <p className="risk-reason">
                 Attesting <strong>{snapshot.source}</strong> as of {snapshot.as_of}
                 {snapshot.source_url && (
                   <>
@@ -382,14 +381,14 @@ export default function GovernancePage() {
               </button>
             )}
             {builtinRules.length > 0 && (
-              <p className="risk-reason" style={{ marginTop: 8 }}>
+              <p className="risk-reason">
                 Built-in rules: {builtinRules.map((r) => `${r.rule_code} (${r.status})`).join(", ")}.
               </p>
             )}
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table className="nfr-table" style={{ width: "100%" }}>
+          <div className="gov-table-wrap">
+            <table className="nfr-table">
               <thead>
                 <tr>
                   <th scope="col">Methodology</th>
@@ -406,12 +405,14 @@ export default function GovernancePage() {
                     <td>
                       {m.name} <strong>v{m.version}</strong>
                       {m.parent_id != null && (
-                        <span style={{ color: "#6b7280" }}> (from #{m.parent_id})</span>
+                        <span className="gov-muted"> (from #{m.parent_id})</span>
                       )}
                     </td>
                     <td>
-                      {m.is_active ? "✓ Active" : m.retired_at ? "Retired" : "Draft"}
-                      {m.locked ? " · 🔒 locked" : " · editable"}
+                      <span className={`gov-pill ${m.is_active ? "gov-pill-ok" : m.retired_at ? "gov-pill-grey" : "gov-pill-info"}`}>
+                        {m.is_active ? "✓ Active" : m.retired_at ? "Retired" : "Draft"}
+                      </span>{" "}
+                      <span className="gov-muted">{m.locked ? "🔒 locked" : "editable"}</span>
                     </td>
                     <td title={m.approval_reason ?? undefined}>
                       {m.approved_by ? `${m.approved_by}, ${when(m.approved_at)}` : "—"}
@@ -419,7 +420,7 @@ export default function GovernancePage() {
                     <td>{m.change_reason ?? "—"}</td>
                     <td title={m.fingerprint ?? undefined}><code>{shortHash(m.fingerprint)}</code></td>
                     <td>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <div className="gov-row-actions">
                         <button type="button" className="secondary-button" onClick={() => setSelectedId(m.id)}>
                           {selectedId === m.id ? "Viewing" : "View"}
                         </button>
@@ -504,8 +505,8 @@ export default function GovernancePage() {
               </p>
             )}
 
-            <div style={{ overflowX: "auto" }}>
-              <table className="nfr-table" style={{ width: "100%" }}>
+            <div className="gov-table-wrap">
+              <table className="nfr-table">
                 <thead>
                   <tr>
                     <th scope="col">Rule</th>
@@ -519,7 +520,7 @@ export default function GovernancePage() {
                     <tr key={rule.rule_code}>
                       <td>
                         <strong>{rule.rule_code}</strong> v{rule.version}
-                        <div style={{ color: "#6b7280", fontSize: 13 }}>{rule.description}</div>
+                        <div className="gov-muted gov-desc">{rule.description}</div>
                       </td>
                       <td>{conditionText(rule)}</td>
                       <td>
@@ -564,7 +565,7 @@ export default function GovernancePage() {
                   }
                 />
               ) : (
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <div className="gov-form-actions">
                   <button type="button" className="primary-button" onClick={() => setOpenForm("rules")}>
                     Save rule changes…
                   </button>
@@ -590,7 +591,7 @@ export default function GovernancePage() {
                 inherent band: controls only mitigate.
               </p>
               {!selected.locked && (
-                <div className="form-group" style={{ maxWidth: 240 }}>
+                <div className="form-group gov-narrow">
                   <label htmlFor="grid-version">Grid version</label>
                   <input
                     id="grid-version"
@@ -599,7 +600,7 @@ export default function GovernancePage() {
                   />
                 </div>
               )}
-              <div style={{ overflowX: "auto" }}>
+              <div className="gov-table-wrap">
                 <table className="nfr-table">
                   <thead>
                     <tr>
@@ -660,7 +661,7 @@ export default function GovernancePage() {
                     }
                   />
                 ) : (
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <div className="gov-form-actions">
                     <button type="button" className="primary-button" onClick={() => setOpenForm("grid")}>
                       Save grid changes…
                     </button>

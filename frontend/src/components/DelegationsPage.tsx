@@ -22,15 +22,9 @@ import { FieldError, RequiredMarker } from "./FormFeedback";
 
 const COMMITTEE_STATUSES = ["READY_FOR_COMMITTEE", "COMMITTEE_REVIEW", "DEFERRED"];
 
-const STATE_STYLES: Record<DelegationState, { background: string; color: string }> = {
-  ACTIVE: { background: "#dcfce7", color: "#166534" },
-  SCHEDULED: { background: "#e0e7ff", color: "#3730a3" },
-  EXPIRED: { background: "#f3f4f6", color: "#4b5563" },
-  REVOKED: { background: "#fee2e2", color: "#991b1b" },
-};
-
-const inputStyle = { padding: "8px 10px", borderRadius: 8, border: "1px solid #d0d5dd", width: "100%" };
-const cell = { padding: "8px 4px", verticalAlign: "top" as const };
+function stateClass(state: DelegationState): string {
+  return `delegation-pill delegation-pill-${state.toLowerCase()}`;
+}
 
 function toLocalInput(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -81,8 +75,10 @@ export default function DelegationsPage({ user, assessments }: DelegationsPagePr
 
   const coveringNow = delegations.filter((d) => d.delegate_id === user.id && d.state === "ACTIVE");
 
+  const canCreate = !!options && options.delegators.length > 0;
+
   return (
-    <div>
+    <div className="delegation-page">
       <div className="page-header">
         <div>
           <h2>Delegations</h2>
@@ -95,9 +91,9 @@ export default function DelegationsPage({ user, assessments }: DelegationsPagePr
       </div>
 
       {coveringNow.length > 0 && (
-        <section className="content-card" aria-label="Authority you currently hold as a delegate">
-          <h3 style={{ marginTop: 0 }}>You are covering</h3>
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
+        <section className="delegation-callout" aria-label="Authority you currently hold as a delegate">
+          <h3>You are covering</h3>
+          <ul>
             {coveringNow.map((d) => (
               <li key={d.id}>
                 {AUTHORITY_LABELS[d.authority]} for <strong>{d.delegator_name}</strong>
@@ -111,38 +107,67 @@ export default function DelegationsPage({ user, assessments }: DelegationsPagePr
       )}
 
       {error && (
-        <p role="alert" style={{ color: "#b91c1c" }}>
+        <p role="alert" className="delegation-error-banner">
           {error}
         </p>
       )}
 
-      {options && options.delegators.length > 0 && (
-        <section className="content-card">
-          <h3 style={{ marginTop: 0 }}>New delegation</h3>
-          <DelegationForm user={user} options={options} assessments={assessments} onCreated={load} />
-        </section>
+      {canCreate && options && (
+        <div className="delegation-layout">
+          <section className="content-card delegation-card">
+            <header className="delegation-card-header">
+              <h3>New delegation</h3>
+              <p>Choose who covers for you, for how long, and what they can approve.</p>
+            </header>
+            <div className="delegation-card-body">
+              <DelegationForm user={user} options={options} assessments={assessments} onCreated={load} />
+            </div>
+          </section>
+
+          <aside className="content-card delegation-card delegation-help" aria-label="How delegation works">
+            <header className="delegation-card-header">
+              <h3>How delegation works</h3>
+            </header>
+            <ul className="delegation-help-list">
+              <li>The delegate can act only within the dates and scope you set.</li>
+              <li>Access stops automatically at the end time, never more than {options.max_days} days.</li>
+              <li>Every approval they make records both of you.</li>
+              <li>You can revoke a delegation at any time from the list below.</li>
+            </ul>
+          </aside>
+        </div>
       )}
 
-      <section className="content-card">
-        <h3 style={{ marginTop: 0 }}>Delegations</h3>
+      <section className="content-card delegation-card">
+        <header className="delegation-card-header">
+          <h3>Delegations</h3>
+          {!loading && delegations.length > 0 && (
+            <span className="delegation-count">{delegations.length}</span>
+          )}
+        </header>
         {loading ? (
-          <p role="status" aria-live="polite">Loading…</p>
+          <p role="status" aria-live="polite" className="delegation-card-body">Loading…</p>
         ) : delegations.length === 0 ? (
-          <div className="empty-state">
-            <h3>No delegations yet</h3>
+          <div className="delegation-empty">
+            <h4>No delegations yet</h4>
+            <p>
+              {canCreate
+                ? "When you are away, create a delegation above so approvals keep moving."
+                : "Delegations you create or are given will appear here."}
+            </p>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+          <div className="delegation-table-wrap">
+            <table className="delegation-table">
               <thead>
-                <tr style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>
-                  <th style={cell}>From → to</th>
-                  <th style={cell}>Authority</th>
-                  <th style={cell}>Scope</th>
-                  <th style={cell}>Period</th>
-                  <th style={cell}>State</th>
-                  <th style={cell}>Reason</th>
-                  <th style={cell}><span className="sr-only">Actions</span></th>
+                <tr>
+                  <th>From → to</th>
+                  <th>Authority</th>
+                  <th>Scope</th>
+                  <th>Period</th>
+                  <th>State</th>
+                  <th>Reason</th>
+                  <th><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -194,40 +219,32 @@ function DelegationRow({
   }
 
   return (
-    <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-      <td style={cell}>
+    <tr>
+      <td>
         {d.delegator_name} → <strong>{d.delegate_name}</strong>
       </td>
-      <td style={cell}>{AUTHORITY_LABELS[d.authority]}</td>
-      <td style={cell}>{d.scope_type === "ASSESSMENT" ? `Assessment #${d.scope_assessment_id}` : "All approvals"}</td>
-      <td style={cell}>{formatWindow(d)}</td>
-      <td style={cell}>
-        <span
-          style={{
-            ...STATE_STYLES[d.state],
-            padding: "2px 8px",
-            borderRadius: 999,
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
+      <td className="delegation-nowrap">{AUTHORITY_LABELS[d.authority]}</td>
+      <td>{d.scope_type === "ASSESSMENT" ? `Assessment #${d.scope_assessment_id}` : "All approvals"}</td>
+      <td>{formatWindow(d)}</td>
+      <td>
+        <span className={stateClass(d.state)}>
           {d.state.charAt(0) + d.state.slice(1).toLowerCase()}
         </span>
       </td>
-      <td style={cell}>
+      <td>
         {d.reason}
         {d.revoke_reason && (
-          <div style={{ color: "#667085", fontSize: 12, marginTop: 4 }}>Revoked: {d.revoke_reason}</div>
+          <div className="delegation-revoked">Revoked: {d.revoke_reason}</div>
         )}
       </td>
-      <td style={cell}>
+      <td>
         {canRevoke && !revoking && (
           <button type="button" className="link-button" onClick={() => setRevoking(true)}>
             Revoke
           </button>
         )}
         {revoking && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 180 }}>
+          <div className="delegation-revoke-box">
             <label htmlFor={`revoke-reason-${d.id}`} className="sr-only">
               Reason for revoking
             </label>
@@ -236,10 +253,10 @@ function DelegationRow({
               placeholder="Reason for revoking"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              style={inputStyle}
+              className="delegation-input"
             />
             {error && <FieldError id={`revoke-error-${d.id}`} message={error} />}
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="delegation-revoke-actions">
               <button type="button" className="secondary-button" disabled={submitting} onClick={submitRevoke}>
                 {submitting ? "Revoking…" : "Confirm"}
               </button>
@@ -334,14 +351,14 @@ function DelegationForm({
     <form
       noValidate
       aria-label="New delegation"
+      className="delegation-form"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
       }}
-      style={{ display: "grid", gap: 12, maxWidth: 560 }}
     >
       {options.delegators.length > 1 && (
-        <div>
+        <div className="delegation-field">
           <label htmlFor="delegation-delegator">
             On behalf of
             <RequiredMarker />
@@ -350,7 +367,7 @@ function DelegationForm({
             id="delegation-delegator"
             value={delegatorId}
             onChange={(event) => setDelegatorId(Number(event.target.value))}
-            style={inputStyle}
+            className="delegation-input"
           >
             {options.delegators.map((u) => (
               <option key={u.id} value={u.id}>
@@ -361,11 +378,12 @@ function DelegationForm({
         </div>
       )}
 
-      <p style={{ margin: 0, color: "#475467", fontSize: 14 }}>
-        Authority: <strong>{AUTHORITY_LABELS[authority]}</strong>
-      </p>
+      <div className="delegation-authority">
+        <span>Authority</span>
+        <strong>{AUTHORITY_LABELS[authority]}</strong>
+      </div>
 
-      <div>
+      <div className="delegation-field">
         <label htmlFor="delegation-delegate">
           Delegate
           <RequiredMarker />
@@ -374,7 +392,7 @@ function DelegationForm({
           id="delegation-delegate"
           value={delegateId}
           onChange={(event) => setDelegateId(event.target.value)}
-          style={inputStyle}
+          className="delegation-input"
         >
           <option value="">Choose a manager…</option>
           {delegates.map((u) => (
@@ -385,8 +403,8 @@ function DelegationForm({
         </select>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-        <div>
+      <div className="delegation-dates">
+        <div className="delegation-field">
           <label htmlFor="delegation-start">
             Starts
             <RequiredMarker />
@@ -396,10 +414,10 @@ function DelegationForm({
             type="datetime-local"
             value={startAt}
             onChange={(event) => setStartAt(event.target.value)}
-            style={inputStyle}
+            className="delegation-input"
           />
         </div>
-        <div>
+        <div className="delegation-field">
           <label htmlFor="delegation-end">
             Ends
             <RequiredMarker />
@@ -409,42 +427,44 @@ function DelegationForm({
             type="datetime-local"
             value={endAt}
             onChange={(event) => setEndAt(event.target.value)}
-            style={inputStyle}
+            className="delegation-input"
           />
         </div>
       </div>
-      <p style={{ margin: 0, color: "#667085", fontSize: 12 }}>
+      <p className="delegation-hint">
         At most {options.max_days} days. Access stops automatically at the end time.
       </p>
 
-      <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
+      <fieldset className="delegation-scope">
         <legend>Scope</legend>
-        <label style={{ display: "block" }}>
+        <label className={`delegation-option${scopeType === "ALL" ? " is-selected" : ""}`}>
           <input
             type="radio"
             name="delegation-scope"
             value="ALL"
             checked={scopeType === "ALL"}
             onChange={() => setScopeType("ALL")}
-          />{" "}
-          All {authority === "MANAGER_APPROVAL" ? "assessments submitted to them" : "committee sign-offs"}
+          />
+          <span>
+            All {authority === "MANAGER_APPROVAL" ? "assessments submitted to them" : "committee sign-offs"}
+          </span>
         </label>
-        <label style={{ display: "block" }}>
+        <label className={`delegation-option${scopeType === "ASSESSMENT" ? " is-selected" : ""}`}>
           <input
             type="radio"
             name="delegation-scope"
             value="ASSESSMENT"
             checked={scopeType === "ASSESSMENT"}
             onChange={() => setScopeType("ASSESSMENT")}
-          />{" "}
-          One assessment only
+          />
+          <span>One assessment only</span>
         </label>
         {scopeType === "ASSESSMENT" && (
           <select
             aria-label="Assessment covered by this delegation"
             value={scopeAssessmentId}
             onChange={(event) => setScopeAssessmentId(event.target.value)}
-            style={{ ...inputStyle, marginTop: 6 }}
+            className="delegation-input"
           >
             <option value="">Choose an assessment…</option>
             {scopeChoices.map((a) => (
@@ -456,33 +476,33 @@ function DelegationForm({
         )}
       </fieldset>
 
-      <div>
+      <div className="delegation-field">
         <label htmlFor="delegation-reason">
           Reason
           <RequiredMarker />
         </label>
         <textarea
           id="delegation-reason"
-          rows={2}
+          rows={3}
           placeholder="e.g. Annual leave 12–19 October"
           value={reason}
           onChange={(event) => setReason(event.target.value)}
-          style={inputStyle}
+          className="delegation-input"
         />
       </div>
 
       {error && (
-        <p role="alert" style={{ color: "#b91c1c", margin: 0 }}>
+        <p role="alert" className="delegation-form-error">
           {error}
         </p>
       )}
       {success && (
-        <p role="status" style={{ color: "#0f766e", margin: 0 }}>
+        <p role="status" className="delegation-success">
           {success}
         </p>
       )}
 
-      <div>
+      <div className="delegation-actions">
         <button type="submit" className="primary-button" disabled={submitting}>
           {submitting ? "Saving…" : "Delegate"}
         </button>

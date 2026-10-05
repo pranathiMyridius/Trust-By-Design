@@ -50,6 +50,27 @@ export default function SourceLibraryPage({ canManage }: { canManage: boolean })
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SourceSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | ApprovedSource["status"] | "OUTDATED">("ALL");
+  const [listFilter, setListFilter] = useState("");
+
+  const counts = {
+    approved: sources.filter((s) => s.status === "APPROVED").length,
+    draft: sources.filter((s) => s.status === "DRAFT").length,
+    retired: sources.filter((s) => s.status === "RETIRED").length,
+    outdated: sources.filter((s) => s.outdated).length,
+  };
+  const needle = listFilter.trim().toLowerCase();
+  const visibleSources = sources.filter((source) => {
+    if (statusFilter === "OUTDATED" ? !source.outdated : statusFilter !== "ALL" && source.status !== statusFilter) {
+      return false;
+    }
+    if (!needle) return true;
+    return [source.title, source.issuer, source.reference, source.source_type_label]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(needle);
+  });
 
   const load = useCallback(() => {
     listSources()
@@ -88,6 +109,25 @@ export default function SourceLibraryPage({ canManage }: { canManage: boolean })
           </button>
         )}
       </header>
+
+      <section className="sl-stats" aria-label="Library summary">
+        <div className="sl-stat">
+          <span>Approved</span>
+          <strong>{counts.approved}</strong>
+        </div>
+        <div className="sl-stat">
+          <span>Drafts</span>
+          <strong>{counts.draft}</strong>
+        </div>
+        <div className="sl-stat">
+          <span>Retired</span>
+          <strong>{counts.retired}</strong>
+        </div>
+        <div className={`sl-stat${counts.outdated ? " sl-stat--warn" : ""}`}>
+          <span>Past review date</span>
+          <strong>{counts.outdated}</strong>
+        </div>
+      </section>
 
       {error && (
         <p className="sl-banner sl-banner--error" role="alert">
@@ -167,11 +207,46 @@ export default function SourceLibraryPage({ canManage }: { canManage: boolean })
 
       <section className="sl-card" aria-labelledby="sl-list-title">
         <h3 className="sl-card__title" id="sl-list-title">
-          Sources ({sources.length})
+          Sources ({visibleSources.length === sources.length ? sources.length : `${visibleSources.length} of ${sources.length}`})
         </h3>
         <p className="sl-card__subtitle">Drafts become evidence only after approval; retired sources stay on record.</p>
+        {sources.length > 0 && (
+          <div className="sl-filters">
+            <div className="sl-chips" role="group" aria-label="Filter by status">
+              {(
+                [
+                  ["ALL", "All"],
+                  ["APPROVED", "Approved"],
+                  ["DRAFT", "Draft"],
+                  ["RETIRED", "Retired"],
+                  ["OUTDATED", "Outdated"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`sl-chip${statusFilter === value ? " sl-chip--active" : ""}`}
+                  aria-pressed={statusFilter === value}
+                  onClick={() => setStatusFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <input
+              type="search"
+              className="sl-list-search"
+              aria-label="Filter sources by title, issuer or reference"
+              placeholder="Filter by title, issuer or reference…"
+              value={listFilter}
+              onChange={(event) => setListFilter(event.target.value)}
+            />
+          </div>
+        )}
         {sources.length === 0 ? (
           <p className="sl-empty">The library is empty{canManage ? " — add or upload the first source." : "."}</p>
+        ) : visibleSources.length === 0 ? (
+          <p className="sl-empty">No sources match this filter.</p>
         ) : (
           <div className="sl-table-wrap">
             <table className="sl-table">
@@ -187,7 +262,7 @@ export default function SourceLibraryPage({ canManage }: { canManage: boolean })
                 </tr>
               </thead>
               <tbody>
-                {sources.map((source) => (
+                {visibleSources.map((source) => (
                   <tr key={source.id}>
                     <td>
                       <div className="sl-source-title">{source.title}</div>
