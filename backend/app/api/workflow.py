@@ -36,6 +36,7 @@ from app.schemas.workflow import (
     WorkQueueResponse,
 )
 from app.services import workflow
+from app.services.notifications import queue_assignment
 from app.services.audit_service import AuditAction, log_audit_event
 
 router = APIRouter(prefix="/api", tags=["Workflow"])
@@ -643,6 +644,8 @@ def assign_current_task(
         actor_id=current_user.id,
         details=details,
     )
+    if assignee and assignee.id != current_user.id:
+        queue_assignment(db, assessment, assignee, current_user)  # emailed after the commit
     db.commit()
     db.refresh(assessment)
     return _summary(db, assessment, current_user)

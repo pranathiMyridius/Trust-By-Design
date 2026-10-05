@@ -24,6 +24,11 @@ os.environ["WORKFLOW_ESCALATION_INTERVAL_SECONDS"] = "0"
 os.environ["BACKUP_INTERVAL_HOURS"] = "0"
 os.environ["BACKUP_DIR"] = os.path.join(_TMP_DIR, "backups")
 os.environ["PROCESSING_JOBS_INLINE"] = "true"
+# Never send real email from the suite, whatever backend/.env says. Tests of
+# the email feature switch it on themselves and replace the sender.
+if os.environ.get("LIVE_EMAIL_TEST") != "1":  # tests/api/test_live_email_flow.py opts in
+    os.environ["NOTIFY_EMAIL_ENABLED"] = "false"
+    os.environ["SMTP_PASSWORD"] = ""
 os.environ["ADMIN_BOOTSTRAP_EMAIL"] = "admin@example.com"
 os.environ["ADMIN_BOOTSTRAP_PASSWORD"] = "Adm1n-Test-Only!"
 # Deterministic tests never use the real AI provider or key from
