@@ -3645,3 +3645,72 @@ export async function decideEvidenceLink(
   }
   return response.json();
 }
+
+// AI challenge analysis: advisory gap findings raised by the model. They
+// never block progression or feed a score; a reviewer confirms or
+// dismisses each one.
+export interface AIChallengeFinding {
+  id: number;
+  run_id: string;
+  category: "MISSING_CONTROL" | "CONTROL_MISMATCH" | "EVIDENCE_GAP" | "CONTRADICTION" | "COVERAGE" | "OTHER";
+  severity: "LOW" | "MEDIUM" | "HIGH";
+  title: string;
+  detail: string;
+  risk_factor_id: number | null;
+  control_id: number | null;
+  document_id: number | null;
+  quote: string | null;
+  status: "OPEN" | "CONFIRMED" | "DISMISSED";
+  model: string | null;
+  generated_by: string | null;
+  generated_at: string;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+}
+
+export interface AIChallengeRun {
+  status: "OK" | "AI_UNAVAILABLE" | "NO_RISKS" | "FAILED";
+  findings_raised: number;
+  findings: AIChallengeFinding[];
+}
+
+export async function listAIChallengeFindings(assessmentId: number): Promise<AIChallengeFinding[]> {
+  const response = await authFetch(`${API_BASE_URL}/api/assessments/${assessmentId}/ai-challenge`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch AI challenge findings");
+  }
+  return response.json();
+}
+
+export async function runAIChallenge(assessmentId: number): Promise<AIChallengeRun> {
+  const response = await authFetch(`${API_BASE_URL}/api/assessments/${assessmentId}/ai-challenge/run`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const detail = await readErrorDetail(response);
+    throw new Error(detail || "The AI gap analysis couldn't be run");
+  }
+  return response.json();
+}
+
+export async function decideAIChallengeFinding(
+  assessmentId: number,
+  findingId: number,
+  decision: "CONFIRM" | "DISMISS",
+  note?: string
+): Promise<AIChallengeFinding> {
+  const response = await authFetch(
+    `${API_BASE_URL}/api/assessments/${assessmentId}/ai-challenge/${findingId}/decision`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, note: note || null }),
+    }
+  );
+  if (!response.ok) {
+    const detail = await readErrorDetail(response);
+    throw new Error(detail || "The decision couldn't be recorded");
+  }
+  return response.json();
+}

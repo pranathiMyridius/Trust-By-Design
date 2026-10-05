@@ -47,6 +47,7 @@ PROMPT_SOURCES = {
     "CONTROL_IDENTIFICATION": "app.ai.control_identifier:identify_applicable_controls",
     "CONTROL_DESIGN_ASSESSMENT": "app.ai.control_identifier:assess_control_design",
     "CONTROL_EVIDENCE_CHECK": "app.ai.evidence_checker:check_control_evidence",
+    "AI_CHALLENGE_ANALYSIS": "app.ai.challenge_analyzer:analyze_assessment_gaps",
     "LIKELIHOOD_IMPACT_SUGGESTION": "app.ai.likelihood_impact_analyzer:estimate_likelihood_impact",
     "DOCUMENT_EXTRACTION": "app.document_analysis.ai_extractor:_build_extraction_prompt",
     "ASSISTANT_CHAT": "app.assistant.orchestrator:build_system_prompt",

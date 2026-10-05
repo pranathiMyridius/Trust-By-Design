@@ -139,6 +139,9 @@ class AuditAction(str, Enum):
     # The read-only assistant answered a question from this assessment's
     # details (who looked at what; the question text is not recorded).
     ASSISTANT_QUERY = "ASSISTANT_QUERY"
+    # AI challenge analysis: a run, and a reviewer's confirm / dismiss.
+    AI_CHALLENGE_RUN = "AI_CHALLENGE_RUN"
+    AI_CHALLENGE_DECIDED = "AI_CHALLENGE_DECIDED"
 
 
 def actor_name(user) -> str:

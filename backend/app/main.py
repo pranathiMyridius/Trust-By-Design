@@ -34,6 +34,7 @@ from app.api.residual_review import router as residual_review_router
 from app.api.source_library import router as source_library_router
 from app.api.sod_exceptions import router as sod_exceptions_router
 from app.api.assistant import router as assistant_router
+from app.api.ai_challenge import router as ai_challenge_router
 from app.models.calculator_draft import CalculatorDraft
 from app.auth.access import enforce_api_access
 from app.middleware import AdminAuditMiddleware, RequestTimingMiddleware, SecurityHeadersMiddleware
@@ -51,8 +52,9 @@ from app.models.document_embedding import DocumentEmbedding
 from app.models.user import User, UserRole
 from app.models.assessment_comment import AssessmentComment
 from app.models.control import Control, ControlAssessment, ControlCondition, ControlGap
-from app.models.challenge_review import ChallengeFinding, ChallengeTriggerConfig
 from app.models.control_evidence import ControlEvidenceLink
+from app.models.ai_challenge import AIChallengeFinding
+from app.models.challenge_review import ChallengeFinding, ChallengeTriggerConfig
 from app.models.assessment_draft import AssessmentDraft
 from app.models.committee_condition import CommitteeCondition
 from app.models.country_risk import CountryRisk
@@ -204,6 +206,7 @@ app.include_router(residual_review_router, dependencies=_protected)
 app.include_router(source_library_router, dependencies=_protected)
 app.include_router(sod_exceptions_router, dependencies=_protected)
 app.include_router(assistant_router, dependencies=_protected)
+app.include_router(ai_challenge_router, dependencies=_protected)
 
 
 # Stage 14 (R14.4): periodic escalation sweep, so an overdue assessment is
