@@ -73,7 +73,7 @@ from app.schemas.assessment_draft import (
     AssessmentDraftAccept,
 )
 from app.services.assessment_draft_service import generate_assessment_draft
-from app.services.decision_lock import ensure_assessment_editable
+from app.services.decision_lock import FINAL_DECISION_STATUSES, ensure_assessment_editable
 from app.control_engine.engine import recompute_control_state
 from app.models.assessment_document import AssessmentDocument
 from app.file_processing.extractor import expand_uploads, extract_text
@@ -3964,6 +3964,18 @@ def get_inherent_risk_calculation(
     )
 
     if not calculation:
+        # A finally-decided assessment is read-only: a GET must not compute
+        # and store a first calculation against whichever methodology is
+        # active today.
+        if assessment.status in FINAL_DECISION_STATUSES:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"No inherent risk calculation was recorded for this assessment "
+                    f"before its final decision ({assessment.status}), and it is "
+                    "read-only. Open a controlled amendment to calculate one."
+                ),
+            )
         calculation = recalculate_inherent_risk(db, assessment)
         db.commit()
         db.refresh(calculation)

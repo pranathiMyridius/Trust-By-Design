@@ -113,6 +113,43 @@ def test_finally_decided_assessment_rejects_edits(client, auth, create_assessmen
         assert "read-only" in response.json()["detail"], f"{name}: {response.text}"
 
 
+def _inherent_calculation_count(aid: int) -> int:
+    db = SessionLocal()
+    try:
+        return db.query(InherentRiskCalculation).filter(InherentRiskCalculation.assessment_id == aid).count()
+    finally:
+        db.close()
+
+
+@pytest.mark.parametrize(
+    "status", ["APPROVED", "APPROVED_WITH_CONDITIONS", "REJECTED", "MANAGER_REJECTED", "CLOSED"]
+)
+def test_reading_inherent_risk_of_decided_assessment_does_not_create_a_calculation(
+    client, auth, create_assessment, status
+):
+    aid = create_assessment()["id"]
+    # A new intake has no calculation yet -- that is the "missing" case.
+    assert _inherent_calculation_count(aid) == 0
+    _set_status(aid, status)
+
+    response = client.get(f"/api/assessments/{aid}/inherent-risk", headers=auth("analyst"))
+
+    assert response.status_code == 404, response.text
+    assert "read-only" in response.json()["detail"]
+    assert _inherent_calculation_count(aid) == 0
+
+
+def test_reading_inherent_risk_of_open_assessment_still_calculates_when_missing(
+    client, auth, create_assessment
+):
+    aid = create_assessment()["id"]
+    assert _inherent_calculation_count(aid) == 0
+
+    ok(client.get(f"/api/assessments/{aid}/inherent-risk", headers=auth("analyst")))
+
+    assert _inherent_calculation_count(aid) == 1
+
+
 # -- 3. manual score is a recorded override, not a score overwrite ---------
 
 
