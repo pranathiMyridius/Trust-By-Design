@@ -12,8 +12,10 @@ class ControlEvidenceLink(Base):
     back several controls and one control can cite several documents.
 
     The AI only ever *suggests* (status SUGGESTED). Accepting a suggestion
-    is an analyst action and is what records evidence on the control; the
-    AI never sets has_evidence or an effectiveness rating by itself.
+    is an analyst action and is what records evidence on the control and
+    starts its effectiveness rating from the AI's view (capped below
+    EFFECTIVE and labelled as AI-suggested, so an analyst can confirm or
+    change it). The AI never sets has_evidence or a rating by itself.
 
     A row with support_level NONE and no document records that the control
     was checked and no uploaded document supported it.
@@ -41,7 +43,8 @@ class ControlEvidenceLink(Base):
     rationale = Column(Text, nullable=True)
     # JSON list of what the evidence does not cover.
     shortfalls = Column(Text, nullable=True)
-    # Informational only: EFFECTIVE | PARTIALLY_EFFECTIVE | INEFFECTIVE | UNVERIFIED
+    # The AI's view; applied (capped below EFFECTIVE) only when an analyst accepts
+    # the link: EFFECTIVE | PARTIALLY_EFFECTIVE | INEFFECTIVE | UNVERIFIED
     suggested_effectiveness = Column(String(30), nullable=True)
 
     # SUGGESTED | ACCEPTED | REJECTED | SUPERSEDED

@@ -6242,6 +6242,23 @@ def advance_assessment_stage(
                     evidence_exc,
                 )
 
+            # AI-suggested design adequacy for controls with no assessment
+            # yet. A starting point the analyst can change: it earns no
+            # credit by itself and a failure never blocks the stage.
+            try:
+                from app.services.control_ai_assessment import suggest_designs
+
+                suggest_designs(db, assessment_id)
+                recompute_control_state(db, assessment_id)
+                db.commit()
+            except Exception as design_exc:  # noqa: BLE001
+                db.rollback()
+                logging.getLogger(__name__).warning(
+                    "Automatic design suggestion failed for assessment %s: %s",
+                    assessment_id,
+                    design_exc,
+                )
+
         except Exception as exc:
             stage_progress.warn_running()
             logging.getLogger(__name__).warning(

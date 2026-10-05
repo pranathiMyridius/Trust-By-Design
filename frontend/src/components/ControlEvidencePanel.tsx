@@ -41,6 +41,7 @@ export default function ControlEvidencePanel({
   const [loaded, setLoaded] = useState(false);
   const [running, setRunning] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [bulkBusy, setBulkBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +82,25 @@ export default function ControlEvidencePanel({
       setError(err instanceof Error ? err.message : "The decision couldn't be recorded");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  // Accept every waiting suggestion for one control type in a single action.
+  // Each mapping is still accepted (and audited) on its own; this saves
+  // clicking the same passage through once per risk.
+  async function handleAcceptAll(groupLabel: string, waiting: EvidenceLink[]) {
+    setBulkBusy(groupLabel);
+    setError(null);
+    try {
+      for (const link of waiting) {
+        const updated = await decideEvidenceLink(assessmentId, link.id, "ACCEPT");
+        setLinks((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      }
+      await onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The decisions couldn't be recorded");
+    } finally {
+      setBulkBusy(null);
     }
   }
 
@@ -138,6 +158,9 @@ export default function ControlEvidencePanel({
             (link) => link.status === "SUGGESTED" && link.support_level !== "NONE"
           ).length;
           const unsupported = memberLinks.filter((link) => link.support_level === "NONE").length;
+          const waiting = memberLinks.filter(
+            (link) => link.status === "SUGGESTED" && link.support_level !== "NONE"
+          );
 
           return (
             <details
@@ -154,6 +177,16 @@ export default function ControlEvidencePanel({
                   {unsupported > 0 ? ` · ${unsupported} with no document` : ""}
                 </span>
               </summary>
+              {canEdit && waiting.length > 1 && (
+                <button
+                  className="secondary-button"
+                  style={{ marginTop: 8 }}
+                  disabled={bulkBusy !== null}
+                  onClick={() => void handleAcceptAll(label, waiting)}
+                >
+                  {bulkBusy === label ? "Accepting..." : `Accept all ${waiting.length} as evidence`}
+                </button>
+              )}
               {members.map((control) => (
                 <div key={control.id} style={{ marginTop: 8 }}>
                   {control.riskLabel && (
@@ -228,7 +261,8 @@ function EvidenceLinkItem({
       {link.suggested_effectiveness && link.status === "SUGGESTED" && (
         <p style={{ margin: "4px 0", fontSize: 13, color: "#667085" }}>
           AI view of effectiveness: {link.suggested_effectiveness.replace(/_/g, " ").toLowerCase()} (for your
-          information; set the rating yourself under “Assess control”).
+          information; accepting this evidence starts the rating from it, which you can confirm or change under
+          “Assess control”).
         </p>
       )}
       {link.status === "SUGGESTED" && canEdit && (
