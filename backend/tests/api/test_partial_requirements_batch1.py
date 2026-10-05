@@ -116,7 +116,7 @@ def test_inherent_override_follows_its_calculated_result(client, auth, analysed_
     aid = analysed_assessment()["id"]
     applicable = [f for f in _factors(client, auth, aid) if f["applicable"] and not f["excluded"]]
     for factor in applicable:
-        ok(_rate(client, auth, aid, factor["id"], 3, 3))
+        ok(_rate(client, auth, aid, factor["id"], 3, 3, "The analyst rates this differently from the model."))
 
     ok(
         client.post(
@@ -128,13 +128,13 @@ def test_inherent_override_follows_its_calculated_result(client, auth, analysed_
     assert _current_calc(aid).overridden
 
     # Same inputs -> same calculated result -> the override carries over.
-    ok(_rate(client, auth, aid, applicable[0]["id"], 3, 3))
+    ok(_rate(client, auth, aid, applicable[0]["id"], 3, 3, "The analyst rates this differently from the model."))
     carried = _current_calc(aid)
     assert carried.overridden and carried.override_value == 90
     assert carried.override_reason == "Sanctions exposure understated."
 
     # Different inputs -> the override no longer refers to this result.
-    ok(_rate(client, auth, aid, applicable[0]["id"], 5, 5))
+    ok(_rate(client, auth, aid, applicable[0]["id"], 5, 5, "The analyst rates this differently from the model."))
     assert not _current_calc(aid).overridden
 
     db = SessionLocal()

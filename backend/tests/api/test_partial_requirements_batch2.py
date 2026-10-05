@@ -21,7 +21,7 @@ def _rate_all(client, auth, aid, likelihood=3, impact=3):
         ok(
             client.patch(
                 f"/api/assessments/{aid}/risk-factors/{factor['id']}/rating",
-                json={"likelihood": likelihood, "impact": impact},
+                json={"likelihood": likelihood, "impact": impact, "reason": "The analyst rates this differently from the model."},
                 headers=auth("analyst"),
             )
         )
@@ -34,7 +34,7 @@ def test_inherent_risk_history_keeps_every_version(client, auth, analysed_assess
     ok(
         client.patch(
             f"/api/assessments/{aid}/risk-factors/{applicable[0]['id']}/rating",
-            json={"likelihood": 5, "impact": 5},
+            json={"likelihood": 5, "impact": 5, "reason": "The analyst rates this differently from the model."},
             headers=auth("analyst"),
         )
     )

@@ -791,16 +791,16 @@ def _record(
         created_at=now,
     )
     db.add(entry)
+    # Email notifications for this change; sent only after the commit.
+    from app.services.notifications import queue_for_transition
+
+    queue_for_transition(db, assessment, action=action, reason=reason.strip(), user=user)
     return entry
 
 
 def check_transition(
     db: Session,
     assessment: Assessment,
-    # Email notifications for this change; sent only after the commit.
-    from app.services.notifications import queue_for_transition
-
-    queue_for_transition(db, assessment, action=action, reason=reason.strip(), user=user)
     to_status: str,
     *,
     user: User | None,

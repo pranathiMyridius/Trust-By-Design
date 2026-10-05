@@ -3413,6 +3413,139 @@ def suggest_assessment_risk_factor_ratings(
     )
 
 
+def _apply_factor_rating(
+    db: Session,
+    assessment: Assessment,
+    factor: RiskFactor,
+    likelihood: int,
+    impact: int,
+    reason: str | None,
+    current_user: User,
+    config: dict,
+) -> None:
+    """
+    Validates and applies one analyst rating to `factor`: the score and band,
+    the confirmed / override / fresh-rating provenance, the override ledger
+    entry (a reason is required when departing from the AI suggestion) and the
+    audit event. Does not recalculate the assessment or commit -- the caller
+    does, once, so a batch of ratings recalculates a single time.
+    """
+
+    likelihood_values = {item["value"] for item in config["likelihood_scale"]}
+    impact_values = {item["value"] for item in config["impact_scale"]}
+
+    if likelihood not in likelihood_values:
+        raise HTTPException(
+            status_code=400,
+            detail=f"likelihood must be one of: {sorted(likelihood_values)}",
+        )
+    if impact not in impact_values:
+        raise HTTPException(
+            status_code=400,
+            detail=f"impact must be one of: {sorted(impact_values)}",
+        )
+
+    score = compute_factor_score(
+        likelihood,
+        impact,
+        likelihood_scale=config["likelihood_scale"],
+        impact_scale=config["impact_scale"],
+    )
+    band = determine_risk_band(score, config["risk_bands"])
+
+    # Distinguish "a human agreed with the model" from "a human decided
+    # differently" from "there was nothing to agree with" -- the raw
+    # presence of a likelihood/impact value cannot tell these apart, and
+    # an auditor needs to.
+    had_suggestion = (
+        factor.ai_suggested_likelihood is not None
+        and factor.ai_suggested_impact is not None
+    )
+
+    if not had_suggestion:
+        rating_source = "ANALYST_RATED"
+    elif (
+        likelihood == factor.ai_suggested_likelihood
+        and impact == factor.ai_suggested_impact
+    ):
+        rating_source = "ANALYST_CONFIRMED"
+    else:
+        rating_source = "ANALYST_OVERRIDE"
+
+    reason = (reason or "").strip()
+
+    if rating_source == "ANALYST_OVERRIDE":
+        # R10.3: departing from the AI's suggestion is a material change.
+        if not reason:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "This rating differs from the AI's suggestion "
+                    f"(likelihood {factor.ai_suggested_likelihood}, impact "
+                    f"{factor.ai_suggested_impact}). Give a reason for the change."
+                ),
+            )
+
+        # R10.4: the AI value, human value, reason, user and time land in
+        # the same ledger the review screen compares, from the record
+        # itself rather than retyped by hand.
+        rating_override = AssessmentOverride(
+            assessment_id=assessment.id,
+            section="FACTOR_RATING",
+            field_name=f"{factor.category} likelihood x impact",
+            entity_id=str(factor.id),
+            ai_value=f"{factor.ai_suggested_likelihood} x {factor.ai_suggested_impact}",
+            human_value=f"{likelihood} x {impact}",
+            reason=reason,
+            overridden_by=actor_name(current_user),
+            overridden_by_id=current_user.id,
+            ai_value_source="SYSTEM",
+            # Made here, under this endpoint's own role rule; the AI
+            # suggestion stays on the factor (ai_suggested_*).
+            review_status="APPLIED",
+            origin="TYPED",
+        )
+        # P3: classified by its actual effect on the factor's band.
+        from app.governance.overrides import classify_entry
+
+        classify_entry(db, rating_override)
+        db.add(rating_override)
+
+    factor.likelihood = likelihood
+    factor.impact = impact
+    factor.rated_by = actor_name(current_user)
+    factor.rated_by_id = current_user.id
+    factor.rated_at = datetime.now(timezone.utc)
+    factor.score = score
+    factor.severity = band
+    factor.rating_source = rating_source
+
+    if rating_source == "ANALYST_OVERRIDE":
+        provenance = (
+            f" Overrides the AI suggestion of likelihood "
+            f"{factor.ai_suggested_likelihood}, impact "
+            f"{factor.ai_suggested_impact}."
+        )
+    elif rating_source == "ANALYST_CONFIRMED":
+        provenance = " Confirms the AI's suggested rating unchanged."
+    else:
+        provenance = " No AI suggestion was present."
+
+    log_audit_event(
+        db=db,
+        assessment_id=assessment.id,
+        action=AuditAction.STATUS_CHANGE,
+        actor=factor.rated_by,
+        actor_id=current_user.id,
+        details=(
+            f"Risk factor rated: {factor.category} — likelihood "
+            f"{likelihood}, impact {impact} -> score "
+            f"{score:g} ({band})." + provenance
+            + (f" Reason: {reason}" if reason else "")
+        ),
+    )
+
+
 @router.patch(
     "/{assessment_id}/risk-factors/{risk_factor_id}/rating",
     response_model=RiskFactorResponse,
@@ -3462,118 +3595,8 @@ def rate_assessment_risk_factor(
     ensure_assessment_editable(assessment)
 
     config = get_methodology_config(db)
-    likelihood_values = {item["value"] for item in config["likelihood_scale"]}
-    impact_values = {item["value"] for item in config["impact_scale"]}
-
-    if payload.likelihood not in likelihood_values:
-        raise HTTPException(
-            status_code=400,
-            detail=f"likelihood must be one of: {sorted(likelihood_values)}",
-        )
-    if payload.impact not in impact_values:
-        raise HTTPException(
-            status_code=400,
-            detail=f"impact must be one of: {sorted(impact_values)}",
-        )
-
-    score = compute_factor_score(
-        payload.likelihood,
-        payload.impact,
-        likelihood_scale=config["likelihood_scale"],
-        impact_scale=config["impact_scale"],
-    )
-    band = determine_risk_band(score, config["risk_bands"])
-
-    # Distinguish "a human agreed with the model" from "a human decided
-    # differently" from "there was nothing to agree with" -- the raw
-    # presence of a likelihood/impact value cannot tell these apart, and
-    # an auditor needs to.
-    had_suggestion = (
-        factor.ai_suggested_likelihood is not None
-        and factor.ai_suggested_impact is not None
-    )
-
-    if not had_suggestion:
-        rating_source = "ANALYST_RATED"
-    elif (
-        payload.likelihood == factor.ai_suggested_likelihood
-        and payload.impact == factor.ai_suggested_impact
-    ):
-        rating_source = "ANALYST_CONFIRMED"
-    else:
-        rating_source = "ANALYST_OVERRIDE"
-
-    reason = (payload.reason or "").strip()
-
-    if rating_source == "ANALYST_OVERRIDE":
-        # R10.3: departing from the AI's suggestion is a material change.
-        if not reason:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "This rating differs from the AI's suggestion "
-                    f"(likelihood {factor.ai_suggested_likelihood}, impact "
-                    f"{factor.ai_suggested_impact}). Give a reason for the change."
-                ),
-            )
-
-        # R10.4: the AI value, human value, reason, user and time land in
-        # the same ledger the review screen compares, from the record
-        # itself rather than retyped by hand.
-        rating_override = AssessmentOverride(
-            assessment_id=assessment_id,
-            section="FACTOR_RATING",
-            field_name=f"{factor.category} likelihood x impact",
-            entity_id=str(factor.id),
-            ai_value=f"{factor.ai_suggested_likelihood} x {factor.ai_suggested_impact}",
-            human_value=f"{payload.likelihood} x {payload.impact}",
-            reason=reason,
-            overridden_by=actor_name(current_user),
-            overridden_by_id=current_user.id,
-            ai_value_source="SYSTEM",
-            # Made here, under this endpoint's own role rule; the AI
-            # suggestion stays on the factor (ai_suggested_*).
-            review_status="APPLIED",
-            origin="TYPED",
-        )
-        # P3: classified by its actual effect on the factor's band.
-        from app.governance.overrides import classify_entry
-
-        classify_entry(db, rating_override)
-        db.add(rating_override)
-
-    factor.likelihood = payload.likelihood
-    factor.impact = payload.impact
-    factor.rated_by = actor_name(current_user)
-    factor.rated_by_id = current_user.id
-    factor.rated_at = datetime.now(timezone.utc)
-    factor.score = score
-    factor.severity = band
-    factor.rating_source = rating_source
-
-    if rating_source == "ANALYST_OVERRIDE":
-        provenance = (
-            f" Overrides the AI suggestion of likelihood "
-            f"{factor.ai_suggested_likelihood}, impact "
-            f"{factor.ai_suggested_impact}."
-        )
-    elif rating_source == "ANALYST_CONFIRMED":
-        provenance = " Confirms the AI's suggested rating unchanged."
-    else:
-        provenance = " No AI suggestion was present."
-
-    log_audit_event(
-        db=db,
-        assessment_id=assessment_id,
-        action=AuditAction.STATUS_CHANGE,
-        actor=factor.rated_by,
-        actor_id=current_user.id,
-        details=(
-            f"Risk factor rated: {factor.category} — likelihood "
-            f"{payload.likelihood}, impact {payload.impact} -> score "
-            f"{score:g} ({band})." + provenance
-            + (f" Reason: {reason}" if reason else "")
-        ),
+    _apply_factor_rating(
+        db, assessment, factor, payload.likelihood, payload.impact, payload.reason, current_user, config
     )
 
     recalculate_assessment_score(db, assessment)
@@ -3583,6 +3606,126 @@ def rate_assessment_risk_factor(
     db.refresh(factor)
 
     return _build_risk_factor_response(factor, _masked_document_ids(db, assessment, current_user))
+
+
+class FactorRatingItem(BaseModel):
+    risk_factor_id: int
+    likelihood: int
+    impact: int
+    reason: str | None = None
+
+
+class FactorRatingsBulkRequest(BaseModel):
+    ratings: list[FactorRatingItem]
+
+
+@router.patch(
+    "/{assessment_id}/risk-factors/ratings",
+    response_model=list[RiskFactorResponse],
+)
+def rate_assessment_risk_factors_bulk(
+    assessment_id: int,
+    payload: FactorRatingsBulkRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_pipeline_role),
+):
+    """
+    Saves several analyst ratings in one go (the "Save all ratings" button).
+    Each rating follows exactly the single-factor rules: a rating that differs
+    from the AI suggestion needs a reason and is recorded as an override, one
+    that matches it is recorded as confirmed. It is all-or-nothing: if any
+    rating is refused, none is saved and every refusal is listed. The
+    inherent-risk calculation is recomputed once at the end.
+    """
+
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    ensure_assessment_editable(assessment)
+
+    if not payload.ratings:
+        raise HTTPException(status_code=400, detail="No ratings were sent.")
+
+    factors = {
+        factor.id: factor
+        for factor in db.query(RiskFactor).filter(
+            RiskFactor.assessment_id == assessment_id,
+            RiskFactor.is_current.is_(True),
+        )
+    }
+    config = get_methodology_config(db)
+
+    errors: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    applied: list[RiskFactor] = []
+    for item in payload.ratings:
+        factor = factors.get(item.risk_factor_id)
+        if factor is None:
+            errors.append({"risk_factor_id": item.risk_factor_id, "category": None, "detail": "Risk factor not found"})
+            continue
+        if item.risk_factor_id in seen:
+            errors.append({"risk_factor_id": factor.id, "category": factor.category, "detail": "Rated more than once in this request"})
+            continue
+        seen.add(item.risk_factor_id)
+        if not factor.applicable or factor.excluded:
+            errors.append({"risk_factor_id": factor.id, "category": factor.category, "detail": "This factor is not applicable or is excluded, so it cannot be rated"})
+            continue
+        try:
+            _apply_factor_rating(db, assessment, factor, item.likelihood, item.impact, item.reason, current_user, config)
+            applied.append(factor)
+        except HTTPException as exc:
+            errors.append({"risk_factor_id": factor.id, "category": factor.category, "detail": str(exc.detail)})
+
+    if errors:
+        db.rollback()
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "No ratings were saved. Fix the following and save again.",
+                # `issues` is what the UI shows; `errors` carries the factor ids.
+                "issues": [f"{e['category'] or 'Factor ' + str(e['risk_factor_id'])}: {e['detail']}" for e in errors],
+                "errors": errors,
+            },
+        )
+
+    actor = actor_name(current_user)
+    recalculate_assessment_score(db, assessment)
+    recalculate_inherent_risk(db, assessment, calculated_by=actor)
+    db.commit()
+
+    masked = _masked_document_ids(db, assessment, current_user)
+    for factor in applied:
+        db.refresh(factor)
+    return [_build_risk_factor_response(factor, masked) for factor in applied]
+
+
+class IndicativeScoreResponse(BaseModel):
+    official_score: float | None
+    official_band: str | None
+    official_is_provisional: bool
+    # Counting the AI's suggestions for factors not yet rated by an analyst.
+    indicative_score: float | None
+    indicative_band: str | None
+    confirmed_ratings: int
+    suggestions_used: int
+    unrated_without_suggestion: int
+
+
+@router.get(
+    "/{assessment_id}/risk-factors/indicative-score",
+    response_model=IndicativeScoreResponse,
+)
+def get_indicative_inherent_score(assessment_id: int, db: Session = Depends(get_db)):
+    """The inherent score as it would be if the AI's suggested ratings were
+    confirmed. Indicative only: nothing is stored and the official score is
+    unchanged."""
+
+    from app.services.inherent_risk_service import compute_indicative_inherent_risk
+
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    return compute_indicative_inherent_risk(db, assessment)
 
 
 @router.patch(
@@ -4746,9 +4889,13 @@ def _build_challenge_findings(
     assessment,
     risk_results,
     intelligence,
+    risk_bands=None,
 ):
     findings = []
 
+    # Bands come from the methodology in force (risk_bands), falling back to
+    # the built-in defaults, so a score is called CRITICAL/HIGH here exactly
+    # when it is everywhere else.
     critical_results = [
         result
         for result in risk_results
@@ -4889,13 +5036,9 @@ def _build_challenge_findings(
                     "The challenge review did not identify a "
                     "specific critical exception. The reviewer "
                     "should validate the overall risk rationale "
-    risk_bands=None,
                     "and supporting controls."
                 ),
             )
-    # Bands come from the methodology in force (risk_bands), falling back to
-    # the built-in defaults, so a score is called CRITICAL/HIGH here exactly
-    # when it is everywhere else.
         )
 
     return findings
@@ -4974,6 +5117,7 @@ def get_assessment_challenge(
         assessment,
         risk_results,
         intelligence,
+        get_methodology_config(db)["risk_bands"],
     )
 
     return {
@@ -5117,12 +5261,12 @@ def update_assessment_challenge(
         "comment": challenge.comment,
         "challenged_by": challenge.challenged_by,
         "created_at": challenge.created_at,
-        get_methodology_config(db)["risk_bands"],
         "updated_at": challenge.updated_at,
         "findings": _build_challenge_findings(
             assessment,
             risk_results,
             intelligence,
+            get_methodology_config(db)["risk_bands"],
         ),
         "inherent_score": inherent_score,
         "residual_score": residual_preview["residual_score"],
@@ -5266,7 +5410,6 @@ def update_fcrm_review(
 
     if not review:
         review = AssessmentFcrmReview(
-            get_methodology_config(db)["risk_bands"],
             assessment_id=assessment_id,
             justification=payload.justification,
             human_ratings=encoded_ratings,
@@ -6038,6 +6181,31 @@ def advance_assessment_stage(
             )
 
         # run_risk_assessment_workflow commits internally; re-fetch.
+        assessment = (
+            db.query(Assessment)
+            .filter(Assessment.id == assessment_id)
+            .first()
+        )
+
+        # Give every unrated factor an AI-suggested likelihood/impact, so the
+        # page can show an INDICATIVE score straight away. Suggestions are
+        # written to ai_suggested_* only: the official score still needs an
+        # analyst's own rating on each factor. Best effort -- a failure, or
+        # nothing to suggest (HTTP 400), never blocks the stage.
+        try:
+            suggest_assessment_risk_factor_ratings(
+                assessment_id,
+                RiskFactorSuggestRatingsRequest(include_rated=False),
+                db,
+                current_user,
+            )
+        except Exception as suggest_exc:  # noqa: BLE001
+            db.rollback()
+            logging.getLogger(__name__).info(
+                "Automatic rating suggestions skipped for assessment %s: %s",
+                assessment_id,
+                suggest_exc,
+            )
         assessment = (
             db.query(Assessment)
             .filter(Assessment.id == assessment_id)

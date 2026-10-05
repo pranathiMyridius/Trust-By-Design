@@ -3730,3 +3730,54 @@ export async function getAmendmentStatus(assessmentId: number): Promise<Amendmen
   }
   return response.json();
 }
+
+// "Save all ratings": every analyst rating in one all-or-nothing request.
+// A rating that differs from the AI suggestion needs a reason.
+export interface RiskFactorRatingInput {
+  risk_factor_id: number;
+  likelihood: number;
+  impact: number;
+  reason?: string;
+}
+
+export async function rateRiskFactorsBulk(
+  assessmentId: number,
+  ratings: RiskFactorRatingInput[]
+): Promise<RiskFactor[]> {
+  const response = await authFetch(`${API_BASE_URL}/api/assessments/${assessmentId}/risk-factors/ratings`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ratings }),
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response);
+    throw new Error(detail || "Failed to save the ratings");
+  }
+
+  return response.json();
+}
+
+// The inherent score as it would be if the AI's suggested ratings were
+// confirmed. Indicative only: the official score is unchanged until an
+// analyst rates each factor.
+export interface IndicativeScore {
+  official_score: number | null;
+  official_band: string | null;
+  official_is_provisional: boolean;
+  indicative_score: number | null;
+  indicative_band: string | null;
+  confirmed_ratings: number;
+  suggestions_used: number;
+  unrated_without_suggestion: number;
+}
+
+export async function getIndicativeScore(assessmentId: number): Promise<IndicativeScore> {
+  const response = await authFetch(
+    `${API_BASE_URL}/api/assessments/${assessmentId}/risk-factors/indicative-score`
+  );
+  if (!response.ok) {
+    throw new Error("Failed to fetch the indicative score");
+  }
+  return response.json();
+}

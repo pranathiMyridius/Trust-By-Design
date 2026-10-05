@@ -81,7 +81,7 @@ def rate_everything(client, auth, aid):
             ok(
                 client.patch(
                     f"/api/assessments/{aid}/risk-factors/{factor['id']}/rating",
-                    json={"likelihood": 3, "impact": 4, "rated_by": "Analyst"},
+                    json={"likelihood": 3, "impact": 4, "rated_by": "Analyst", "reason": "The analyst rates this differently from the model."},
                     headers=auth("analyst"),
                 )
             )

@@ -31,7 +31,7 @@ def confirmed_assessment(client, auth, create_assessment) -> int:
 def rate(client, auth, aid, factor_id, likelihood, impact):
     return client.patch(
         f"/api/assessments/{aid}/risk-factors/{factor_id}/rating",
-        json={"likelihood": likelihood, "impact": impact, "rated_by": "Analyst"},
+        json={"likelihood": likelihood, "impact": impact, "rated_by": "Analyst", "reason": "The analyst rates this differently from the model."},
         headers=auth("analyst"),
     )
 

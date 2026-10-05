@@ -263,3 +263,68 @@ def _audit_rule_changes(
             actor=actor or "System",
             details=f"Policy rule {code} no longer applies after recalculation.",
         )
+
+
+def compute_indicative_inherent_risk(db: Session, assessment: Assessment) -> dict[str, Any]:
+    """
+    An INDICATIVE inherent score: the official calculation with every applicable
+    factor that has no analyst rating yet counted at the AI's suggested
+    likelihood/impact. Nothing is stored and no factor is changed -- the
+    official score, and the R6.7 gate that every factor carries an analyst's
+    own rating, are untouched. Factors with neither a rating nor a suggestion
+    stay unrated and are left out, as in the official calculation.
+    """
+
+    from app.risk_engine.scoring import compute_factor_score
+
+    config = get_methodology_config(db)
+    factors = current_factors(db, assessment)
+
+    official, _ = compute_inherent_risk(db, assessment)
+
+    inputs = factor_inputs(factors)
+    suggestions_used = 0
+    without_suggestion = 0
+    confirmed = 0
+    for factor, item in zip(factors, inputs):
+        if not factor.applicable or factor.excluded:
+            continue
+        if item["rated"]:
+            confirmed += 1
+            continue
+        if factor.ai_suggested_likelihood is None or factor.ai_suggested_impact is None:
+            without_suggestion += 1
+            continue
+        item["likelihood"] = factor.ai_suggested_likelihood
+        item["impact"] = factor.ai_suggested_impact
+        item["score"] = compute_factor_score(
+            factor.ai_suggested_likelihood,
+            factor.ai_suggested_impact,
+            likelihood_scale=config["likelihood_scale"],
+            impact_scale=config["impact_scale"],
+        )
+        item["rated"] = True
+        suggestions_used += 1
+
+    from app.services.country_risk_service import scoring_jurisdiction_context
+
+    jurisdictions = scoring_jurisdiction_context(db, assessment.countries_jurisdictions)
+    indicative = calculate_inherent_risk(
+        inputs,
+        weights=config["factor_weights"],
+        risk_bands=config["risk_bands"],
+        escalation_rules=config["escalation_rules"],
+        mitigant_categories=config["mitigant_categories"],
+        jurisdiction_matches=jurisdictions["matches"],
+    )
+
+    return {
+        "official_score": official["final_score"],
+        "official_band": official["risk_band"],
+        "official_is_provisional": official["is_provisional"],
+        "indicative_score": indicative["final_score"],
+        "indicative_band": indicative["risk_band"],
+        "confirmed_ratings": confirmed,
+        "suggestions_used": suggestions_used,
+        "unrated_without_suggestion": without_suggestion,
+    }
