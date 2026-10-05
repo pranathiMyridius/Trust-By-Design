@@ -30,27 +30,27 @@ test.describe("Status workflow", () => {
     await expect(workflowStatus(page)).toContainText("Draft");
     await page.getByRole("button", { name: "Submit request" }).click();
     await expect(workflowStatus(page)).toContainText("Submitted");
-    await expect(stage(page, "Intake")).toHaveAttribute("aria-current", "step");
+    await expect(stage(page, "Intake & Evidence")).toHaveAttribute("aria-current", "step");
 
     // INTAKE -> EVIDENCE_COLLECTION
     await page.getByRole("button", { name: "Complete Intake & Start Evidence Collection" }).click();
-    await expect(stage(page, "Evidence Collection")).toHaveAttribute("aria-current", "step");
+    await expect(stage(page, "Intake & Evidence")).toHaveAttribute("aria-current", "step");
     await expect(workflowStatus(page)).toContainText("Intake Validation");
 
     // Gate: risk identification refuses an unconfirmed business profile.
     await page.getByRole("button", { name: "Run Risk Identification & Continue" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "has not been confirmed" })).toBeVisible();
-    await expect(stage(page, "Evidence Collection")).toHaveAttribute("aria-current", "step");
+    await expect(stage(page, "Intake & Evidence")).toHaveAttribute("aria-current", "step");
 
     // The owner confirms the profile on the Intake step -- straight away,
     // without re-opening the assessment (regression: it used to appear
     // only after navigating away and back).
-    await stage(page, "Intake").click();
+    await stage(page, "Intake & Evidence").click();
     await page.getByRole("button", { name: "Confirm extracted information" }).click();
     await expect(page.getByRole("button", { name: "Confirmed" })).toBeVisible();
 
     // ...then EVIDENCE_COLLECTION -> RISK_IDENTIFICATION
-    await stage(page, "Evidence Collection").click();
+    await stage(page, "Intake & Evidence").click();
     await page.getByRole("button", { name: "Run Risk Identification & Continue" }).click();
     await expect(stage(page, "Risk Identification")).toHaveAttribute("aria-current", "step");
     await expect(workflowStatus(page)).toContainText("Risk Assessment in Progress");

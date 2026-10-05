@@ -35,7 +35,23 @@ export function intakeRequest(title: string, overrides: Record<string, string> =
   };
 }
 
+/**
+ * Risk Identification ends on an "AI prediction" dialog that stays open until
+ * the user clicks Continue. It covers the page, so dismiss it when it
+ * appears -- but only once it offers Continue (a running or refused move
+ * has a different button and closes itself).
+ */
+export async function dismissStageDialog(page: Page): Promise<void> {
+  await page.addLocatorHandler(
+    page.locator(".rim-backdrop").filter({ has: page.getByRole("button", { name: "Continue", exact: true }) }),
+    async (dialog) => {
+      await dialog.getByRole("button", { name: "Continue", exact: true }).click();
+    }
+  );
+}
+
 export async function login(page: Page, who: Who): Promise<void> {
+  await dismissStageDialog(page);
   await page.goto("/");
   await page.getByLabel("Email").fill(USERS[who].email);
   await page.getByLabel("Password").fill(USERS[who].password);
@@ -171,10 +187,34 @@ export async function completeChallenge(request: APIRequestContext, id: number):
   });
 }
 
-/** ... -> Ready for Committee: challenge review completed and signed off,
- * approved by the manager. */
+/**
+ * The manager cannot send an assessment to the committee while material
+ * overrides await review. The analyst's ratings differ from the AI's, so a
+ * few are always pending: the reviewer confirms them and the Head of FCRM
+ * approves the ones that need it.
+ */
+export async function confirmPendingOverrides(request: APIRequestContext, id: number): Promise<void> {
+  type Override = { id: number; state: string | null };
+  const ledger = async () => (await api(request, "analyst", "GET", `/api/assessments/${id}/overrides`)) as Override[];
+  for (const entry of (await ledger()).filter((o) => o.state === "PENDING_REVIEW")) {
+    await api(request, "reviewer", "PATCH", `/api/assessments/${id}/overrides/${entry.id}/review`, {
+      decision: "CONFIRM",
+      note: "Confirmed for the E2E journey.",
+    });
+  }
+  for (const entry of (await ledger()).filter((o) => o.state === "PENDING_APPROVAL")) {
+    await api(request, "head", "PATCH", `/api/assessments/${id}/overrides/${entry.id}/approval`, {
+      decision: "APPROVE",
+      rationale: "Approved for the E2E journey.",
+    });
+  }
+}
+
+/** ... -> Ready for Committee: overrides reviewed, challenge review completed
+ * and signed off, approved by the manager. */
 export async function toCommittee(request: APIRequestContext, title: string): Promise<number> {
   const id = await toManagerReview(request, title);
+  await confirmPendingOverrides(request, id);
   await completeChallenge(request, id);
   await api(request, "manager", "POST", `/api/assessments/${id}/manager-decision`, {
     decision: "approve",
@@ -220,6 +260,13 @@ export async function rateAllFactors(page: Page, likelihood: number, impact: num
     await expect(reRateButtons).toHaveCount(alreadyRated + done);
   }
   return total;
+}
+
+/** Open a page that lives under the sidebar's "More" menu (the menu closes after the click). */
+export async function openFromMore(page: Page, name: string): Promise<void> {
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  await nav.getByRole("button", { name: "More" }).click();
+  await nav.getByRole("button", { name, exact: true }).click();
 }
 
 export function stage(page: Page, name: string) {

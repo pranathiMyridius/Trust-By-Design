@@ -48,7 +48,7 @@ test.describe("Access control", () => {
 
     await login(page, "manager");
     await openAssessment(page, title);
-    await stage(page, "Evidence Collection").click();
+    await stage(page, "Intake & Evidence").click();
     await expect(page.getByText("Confidential — sensitive values are masked for your role").first()).toBeVisible();
     await expect(page.getByText(/the original file is not available to you/).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Download" }).first()).toBeDisabled();

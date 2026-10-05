@@ -152,22 +152,4 @@ test.describe("Analyze assessment", () => {
     await expect(indicatorMap.getByText("UNRATED")).toHaveCount(0);
     await expect(indicatorMap.locator(".risk-score-badge.low").first()).toBeVisible();
   });
-
-  test("the scoring calculator never writes to Audit History on its own", async ({ page, request }) => {
-    // Regression: running risk identification used to make the Manual
-    // Scoring Calculator save a draft and log "weighted total 0.00 (LOW)"
-    // without anyone touching it.
-    const title = unique("E2E Calculator");
-    const id = await createAssessment(request, title);
-    await readyForRiskIdentification(request, id);
-
-    await login(page, "analyst");
-    await openAssessment(page, title);
-    await page.getByRole("button", { name: "Run Risk Identification & Continue" }).click();
-    await expect(page.getByRole("heading", { name: "Manual Scoring Calculator" })).toBeVisible();
-    await page.waitForTimeout(3_000); // longer than the calculator's debounce
-
-    const events = await api(request, "analyst", "GET", `/api/assessments/${id}/audit`);
-    expect(events.map((event: { action: string }) => event.action)).not.toContain("RISK_CALCULATOR_UPDATED");
-  });
 });

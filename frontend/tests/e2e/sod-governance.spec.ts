@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { API, USERS, api, login, openAssessment, stage, toCommittee, toManagerReview, token, unique } from "./helpers";
+import { API, USERS, api, login, openAssessment, openFromMore, stage, toCommittee, toManagerReview, token, unique } from "./helpers";
 
 // P3 (provisional policy -- pending governance approval): SoD exceptions,
 // Admin/committee separation, override and challenge-review duties, and
@@ -49,7 +49,7 @@ test.describe("SoD and governance enforcement", () => {
 
     // 1. Submit an SoD exception request through the UI.
     await login(page, "analyst");
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "SoD Exceptions" }).click();
+    await openFromMore(page, "SoD Exceptions");
     await expect(page.getByRole("note")).toContainText("Pending Governance Approval");
     await page.getByRole("combobox", { name: "Exception type" }).selectOption("ADMIN_COMMITTEE_DUAL_ROLE");
     await page.getByRole("combobox", { name: "Affected person" }).selectOption({ label: USERS.dualadmin.full_name! });
@@ -83,7 +83,7 @@ test.describe("SoD and governance enforcement", () => {
     await page.getByRole("button", { name: /^Account:/ }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
     await login(page, "head");
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "SoD Exceptions" }).click();
+    await openFromMore(page, "SoD Exceptions");
     await page.getByRole("tab", { name: "Awaiting my approval" }).click();
     await page.getByRole("table", { name: "SoD exceptions" }).getByRole("button", { name: /^SOD-/ }).last().click();
     await page.getByRole("button", { name: "Approve", exact: true }).click();
@@ -145,15 +145,14 @@ test.describe("SoD and governance enforcement", () => {
     expect(proposed.materiality).toBe("MATERIAL");
 
     await login(page, "manager");
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Approvals", exact: true }).click();
-    const row = page.locator(".assessment-row").filter({ hasText: title });
-    const readiness = row.getByRole("region", { name: "Committee readiness" });
-    const reasons = readiness.getByRole("list", { name: "Blocking reasons" });
+    // The manager decides on the assessment's Approval screen.
+    await openAssessment(page, title);
+    const readiness = page.getByRole("region", { name: "Committee readiness checklist" });
     await expect(readiness).toContainText("Blocked");
-    await expect(reasons).toContainText("await independent review");
-    await expect(reasons).toContainText("independent challenge review has not been completed");
-    await row.getByRole("button", { name: "Approve", exact: true }).click();
-    await expect(row.getByText("cannot move to committee review")).toBeVisible();
+    await expect(readiness).toContainText("await independent review");
+    await expect(readiness).toContainText("independent challenge review has not been completed");
+    // Approving is not offered while anything blocks it.
+    await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeDisabled();
 
     // The independent review and the approval (different people).
     await api(request, "reviewer", "PATCH", `/api/assessments/${id}/overrides/${proposed.id}/review`, { decision: "CONFIRM", note: "Contract confirms Ukraine." });
@@ -176,15 +175,14 @@ test.describe("SoD and governance enforcement", () => {
     await page.getByRole("button", { name: /^Account:/ }).click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
     await login(page, "manager");
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Approvals", exact: true }).click();
-    const managerRow = page.locator(".assessment-row").filter({ hasText: title });
-    const managerChallenge = managerRow.getByRole("region", { name: "Challenge review (mandatory)" });
+    await openAssessment(page, title);
+    const managerChallenge = page.getByRole("region", { name: "Challenge review (mandatory)" }).first();
     await managerChallenge.getByRole("textbox", { name: "Sign off challenge review: summary (required)" }).fill("Reviewed and agreed.");
     await managerChallenge.getByRole("button", { name: "Sign off challenge review" }).click();
 
     // 8. Readiness clears only now -- and the approval goes through.
-    await expect(managerRow.getByRole("region", { name: "Committee readiness" })).toContainText("Nothing blocks this step.");
-    await managerRow.getByRole("button", { name: "Approve", exact: true }).click();
-    await expect(page.locator(".assessment-row").filter({ hasText: title })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Committee readiness checklist" })).toContainText("All readiness checks passed");
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
+    await expect(stage(page, "Approval")).toContainText("Awaiting committee");
   });
 });

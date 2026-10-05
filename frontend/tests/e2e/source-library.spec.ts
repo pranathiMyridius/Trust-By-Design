@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { api, login, unique } from "./helpers";
+import { api, login, openFromMore, unique } from "./helpers";
 
 // R5.1: a library admin uploads a policy document, reviews the extracted
 // text, saves it as a draft and approves it; analysts then find it.
@@ -9,7 +9,7 @@ test("an admin uploads a policy document, approves it, and it becomes searchable
   const marker = `screening${Date.now().toString(36)}`;
 
   await login(page, "admin");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Source Library" }).click();
+  await openFromMore(page, "Source Library");
   await page.getByRole("button", { name: "Add source" }).click();
 
   // Unsupported files are refused with a clear message.

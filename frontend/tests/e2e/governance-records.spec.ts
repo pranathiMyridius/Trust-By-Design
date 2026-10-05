@@ -28,13 +28,14 @@ test.describe("Governance records", () => {
     });
 
     await login(page, "manager");
-    await approvals(page).click();
+    // The manager decides on the assessment's Approval screen, not from the queue.
+    await openAssessment(page, title);
     const signoff = page.getByRole("region", { name: "Challenge review (mandatory)" }).first();
     await expect(signoff.getByRole("alert")).toContainText("has not been signed off");
 
-    // Refused while unsigned.
-    await page.getByRole("button", { name: "Approve", exact: true }).click();
-    await expect(page.getByText("cannot move to committee review")).toBeVisible();
+    // Not offered while unsigned: the checklist says why and Approve is disabled.
+    await expect(page.getByRole("region", { name: "Committee readiness checklist" })).toContainText("Blocked");
+    await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeDisabled();
 
     // A summary is required, then the sign-off is recorded.
     await signoff.getByRole("button", { name: "Sign off challenge review" }).click();
@@ -45,8 +46,9 @@ test.describe("Governance records", () => {
     await signoff.getByRole("button", { name: "Sign off challenge review" }).click();
     await expect(signoff.getByText("Complete.")).toBeVisible();
 
+    await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeEnabled();
     await page.getByRole("button", { name: "Approve", exact: true }).click();
-    await expect(page.getByText("Nothing waiting on you right now.")).toBeVisible();
+    await expect(stage(page, "Approval")).toContainText("Awaiting committee");
   });
 
   test("a changed committee vote keeps the earlier vote on record", async ({ page, request }) => {
@@ -59,6 +61,8 @@ test.describe("Governance records", () => {
     const row = page.locator(".assessment-row").filter({ hasText: title });
     await row.getByRole("textbox", { name: "Optional comment for your vote" }).fill("Within appetite.");
     await row.getByRole("button", { name: "Approve", exact: true }).first().click();
+    // The full vote history sits in a collapsed section under the member cards.
+    await row.getByText(/^Vote history/).click();
     const votes = row.getByRole("list", { name: "Committee votes, including superseded ones" });
     await expect(votes).toContainText("APPROVE (v1, current)");
 
@@ -120,10 +124,11 @@ test.describe("Governance records", () => {
     await login(page, "manager");
     await openAssessment(page, title);
     await stage(page, "Human Review").click();
-    await ledger.getByRole("textbox", { name: /Review note for override/ }).fill("Agreed: the sanctions nexus is material.");
-    await ledger.getByRole("button", { name: "Confirm" }).click();
-    await expect(ledger).toContainText("Done (non-material)");
-    await expect(ledger).toContainText("Morgan Manager: Agreed: the sanctions nexus is material.");
+    const proposedRow = ledger.getByRole("row").filter({ hasText: "Settlement to Poland creates a sanctions nexus." });
+    await proposedRow.getByRole("textbox", { name: /Review note for override/ }).fill("Agreed: the sanctions nexus is material.");
+    await proposedRow.getByRole("button", { name: "Confirm" }).click();
+    await expect(proposedRow).toContainText("Done (non-material)");
+    await expect(proposedRow).toContainText("Morgan Manager: Agreed: the sanctions nexus is material.");
 
     // Nothing calculated changed: the factor's own rationale is unchanged.
     const after = (await api(request, "analyst", "GET", `/api/assessments/${id}/risk-factors`)) as typeof factors;
@@ -147,7 +152,7 @@ test.describe("Governance records", () => {
 
     await login(page, "analyst");
     await openAssessment(page, title);
-    await stage(page, "Control Assessment").click();
+    await stage(page, "Controls & Residual Risk").click();
 
     await page.getByRole("button", { name: "Edit / remap" }).click();
     await page.getByLabel("Control owner").fill("Financial Crime Compliance");

@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
-import { API, api, createAssessment, login, openAssessment, token, unique } from "./helpers";
+import { API, api, committeeQuorumVotes, createAssessment, login, openAssessment, openFromMore, toCommittee, token, unique } from "./helpers";
 
 // P5 (provisional policy -- pending governance approval): versioned
 // retention policy with independent approval, legal holds with independent
@@ -46,7 +46,7 @@ async function raw(request: APIRequestContext, bearer: string, method: "GET" | "
 }
 
 async function openRetention(page: Page) {
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Retention & Legal Holds" }).click();
+  await openFromMore(page, "Retention & Legal Holds");
   await expect(page.getByRole("heading", { name: "Retention & Legal Holds" })).toBeVisible();
 }
 
@@ -124,7 +124,14 @@ test.describe.serial("Retention policy, legal holds and eligibility", () => {
 
   test("a legal hold blocks eligibility and is released only by a different authorized user", async ({ page, browser, request }) => {
     const title = unique("E2E retention hold");
-    const id = await createAssessment(request, title);
+    // Retention runs from the final decision, so the panel appears on the
+    // Approval screen once the committee has decided.
+    const id = await toCommittee(request, title);
+    await committeeQuorumVotes(request, id);
+    await api(request, "committee", "POST", `/api/assessments/${id}/committee-decision`, {
+      decision: "approve",
+      rationale: "Approved by the committee for the E2E retention journey.",
+    });
 
     // 5. An Admin places a hold through the assessment's Retention panel.
     await login(page, "admin");
@@ -201,8 +208,8 @@ test.describe.serial("Retention policy, legal holds and eligibility", () => {
     await analyst.context().clearCookies();
     await analyst.evaluate(() => window.localStorage.clear());
     await login(analyst, "analyst");
-    await expect(
-      analyst.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "Retention & Legal Holds" }),
-    ).toHaveCount(0);
+    const nav = analyst.getByRole("navigation", { name: "Main navigation" });
+    await nav.getByRole("button", { name: "More" }).click();
+    await expect(nav.getByRole("button", { name: "Retention & Legal Holds" })).toHaveCount(0);
   });
 });

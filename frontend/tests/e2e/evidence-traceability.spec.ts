@@ -60,11 +60,11 @@ test.describe("Evidence traceability", () => {
     await openAssessment(page, title);
 
     // Refused while the expired document is undecided.
-    await expect(stage(page, "Evidence Collection")).toHaveAttribute("aria-current", "step");
+    await expect(stage(page, "Intake & Evidence")).toHaveAttribute("aria-current", "step");
     await expect(page.getByText(/vendor-policy-2024\.txt/).first()).toBeVisible();
     await page.getByRole("button", { name: "Run Risk Identification & Continue" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "Expired evidence must be acknowledged" }).first()).toBeVisible();
-    await expect(stage(page, "Evidence Collection")).toHaveAttribute("aria-current", "step");
+    await expect(stage(page, "Intake & Evidence")).toHaveAttribute("aria-current", "step");
 
     // The owner decides, with a reason.
     const decision = page.getByRole("textbox", { name: "Reason for vendor-policy-2024.txt" });
@@ -73,7 +73,7 @@ test.describe("Evidence traceability", () => {
     await expect(page.getByText(/Used as evidence by/)).toBeVisible();
 
     // Intake step: provenance and the versioned history.
-    await stage(page, "Intake").click();
+    await stage(page, "Intake & Evidence").click();
     const provenance = page.getByTestId("field-provenance");
     await provenance.locator("summary").click();
     await expect(provenance).toContainText("brief.txt");
@@ -83,7 +83,7 @@ test.describe("Evidence traceability", () => {
     await expect(history).toContainText("Profile confirmed");
     await expect(history).toContainText("Request v1");
 
-    await stage(page, "Evidence Collection").click();
+    await stage(page, "Intake & Evidence").click();
     await page.getByRole("button", { name: "Run Risk Identification & Continue" }).click();
     await expect(stage(page, "Risk Identification")).toHaveAttribute("aria-current", "step");
   });

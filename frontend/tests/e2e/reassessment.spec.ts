@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { API, api, committeeQuorumVotes, login, readyForRiskIdentification, toCommittee, token, unique } from "./helpers";
+import { API, api, committeeQuorumVotes, confirmPendingOverrides, login, readyForRiskIdentification, toCommittee, token, unique } from "./helpers";
 
 // P6 (Stage 18): an approved assessment is reassessed through the UI; while
 // the reassessment runs, the parent stays in force and says so; when the
@@ -40,6 +40,7 @@ async function existingToCommittee(request: APIRequestContext, id: number) {
   for (const finding of review.findings.filter((f) => f.resolution_status === "OPEN")) {
     await api(request, "analyst", "PATCH", `/api/assessments/${id}/challenge-findings/${finding.id}/resolve`, { resolution_note: "Addressed for the E2E journey." });
   }
+  await confirmPendingOverrides(request, id);
   await api(request, "reviewer", "POST", `/api/assessments/${id}/challenge-review/review`, { reason: "Independent challenge review completed for the E2E journey." });
   await api(request, "manager", "POST", `/api/assessments/${id}/challenge-review/signoff`, { reason: "Challenge review signed off for the E2E journey." });
   await api(request, "manager", "POST", `/api/assessments/${id}/manager-decision`, { decision: "approve", comment: "Approved for committee." });
