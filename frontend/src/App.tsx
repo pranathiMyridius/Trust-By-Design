@@ -34,6 +34,7 @@ import DashboardPage, { type ActionFilter } from "./components/DashboardPage";
 import { launchingWithinWeek } from "./utils/assessmentLifecycle";
 import NavIcon, { type NavIconName } from "./components/NavIcons";
 import ChatAssistant from "./components/ChatAssistant";
+import NotificationBell from "./components/NotificationBell";
 import { friendlyError } from "./utils/errorMessages";
 
 type Page =
@@ -484,6 +485,8 @@ function AuthenticatedApp({
               setEditingDraft(null);
             }}
           />
+              <NotificationBell refreshKey={assessments} userId={user.id} onOpen={openAssessmentById} />
+
         ) : selectedAssessment ? (
   <AssessmentWorkflow
     assessment={selectedAssessment}

@@ -27,8 +27,10 @@ export type NavIconName =
   | "check-circle"
   | "pencil"
   | "x-circle"
+  | "bell"
   | "bot"
-  | "file";
+  | "file"
+  | "more";
 
 const PATHS: Record<NavIconName, string[]> = {
   shield: ["M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z", "M12 8v4", "M12 15.5h.01"],
@@ -53,8 +55,10 @@ const PATHS: Record<NavIconName, string[]> = {
   "check-circle": ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", "m8.5 12 2.5 2.5 4.5-5"],
   pencil: ["M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z", "m15 5 4 4"],
   "x-circle": ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", "m15 9-6 6", "m9 9 6 6"],
+  bell: ["M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9", "M10.3 21a1.94 1.94 0 0 0 3.4 0"],
   bot: ["M12 8V4H8", "M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z", "M2 14h2", "M20 14h2", "M9 13v2", "M15 13v2"],
   file: ["M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z", "M14 3v5h5"],
+  more: ["M5 12h.01", "M12 12h.01", "M19 12h.01"],
 };
 
 export default function NavIcon({ name, size = 20 }: { name: NavIconName; size?: number }) {

@@ -5712,3 +5712,18 @@ textarea[aria-invalid="true"] {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.bell { position: relative; }
+.bell-button { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid transparent; background: #f3f4f6; color: #374151; cursor: pointer; }
+.bell-button:hover { background: #e5e7eb; }
+.bell-button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.bell-badge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
+.bell-panel { position: absolute; right: 0; top: 44px; z-index: 50; width: 320px; max-width: calc(100vw - 32px); max-height: 380px; overflow-y: auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 12px 32px rgba(17, 24, 39, 0.16); }
+.bell-panel-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f0f1f3; font-size: 13px; }
+.bell-panel ul { list-style: none; margin: 0; padding: 0; }
+.bell-panel li button { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 10px 14px; border: 0; border-bottom: 1px solid #f5f5f6; background: #fff; cursor: pointer; font: inherit; }
+.bell-panel li button:hover { background: #f9fafb; }
+.bell-panel li button.bell-new { background: #eff6ff; }
+.bell-panel li button strong { font-size: 13px; color: #111827; }
+.bell-panel li button span { font-size: 12px; color: #667085; text-transform: capitalize; }
+.bell-empty { margin: 0; padding: 16px 14px; font-size: 13px; color: #667085; }
