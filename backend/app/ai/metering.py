@@ -48,6 +48,7 @@ PROMPT_SOURCES = {
     "CONTROL_DESIGN_ASSESSMENT": "app.ai.control_identifier:assess_control_design",
     "LIKELIHOOD_IMPACT_SUGGESTION": "app.ai.likelihood_impact_analyzer:estimate_likelihood_impact",
     "DOCUMENT_EXTRACTION": "app.document_analysis.ai_extractor:_build_extraction_prompt",
+    "ASSISTANT_CHAT": "app.assistant.orchestrator:build_system_prompt",
 }
 
 

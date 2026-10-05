@@ -33,6 +33,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import DashboardPage, { type ActionFilter } from "./components/DashboardPage";
 import { launchingWithinWeek } from "./utils/assessmentLifecycle";
 import NavIcon, { type NavIconName } from "./components/NavIcons";
+import ChatAssistant from "./components/ChatAssistant";
 import { friendlyError } from "./utils/errorMessages";
 
 type Page =
@@ -149,6 +150,19 @@ function AuthenticatedApp({
         // Non-fatal — the optimistic copy set above is still usable.
         console.error(err);
       });
+  }
+
+  // The assistant mentions assessments by id; open one from the list if we
+  // have it, otherwise fetch it (the server decides whether it may be seen).
+  function openAssessmentById(assessmentId: number) {
+    const known = assessments.find((item) => item.id === assessmentId);
+    if (known) {
+      openAssessment(known);
+      return;
+    }
+    getAssessment(assessmentId)
+      .then((fetched) => openAssessment(fetched))
+      .catch((err) => console.error(err));
   }
 
   /*
@@ -577,6 +591,12 @@ function AuthenticatedApp({
         </main>
         </div>
       </div>
+
+      {/* Read-only assistant: summaries, deadlines, risk explanations. */}
+      <ChatAssistant
+        assessmentId={selectedAssessmentId}
+        onOpenAssessment={openAssessmentById}
+      />
     </div>
   );
 }

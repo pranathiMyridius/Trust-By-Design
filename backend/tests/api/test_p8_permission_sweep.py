@@ -28,6 +28,7 @@ import pytest
 from app.database import SessionLocal
 from app.main import app
 from app.models.assessment import Assessment
+from app.auth.access import READ_ONLY_POST_ALLOWLIST
 from app.models.audit_event import AuditEvent
 from tests.api.test_roles_and_scope import _login, _user
 from tests.conftest import ok
@@ -109,7 +110,16 @@ def test_read_only_roles_are_refused_every_write(client, create_assessment, role
     before = _fingerprint(aid)
     denied_before = _denials(user_id)
 
-    writes = [(m, p) for m, p in OPERATIONS if m in WRITE_METHODS and (m, p) not in PUBLIC and not p.startswith("/api/auth/")]
+    # The read-only assistant is the one deliberate exception (it changes
+    # nothing); tests/api/test_assistant.py covers it.
+    writes = [
+        (m, p)
+        for m, p in OPERATIONS
+        if m in WRITE_METHODS
+        and (m, p) not in PUBLIC
+        and (m, p) not in READ_ONLY_POST_ALLOWLIST
+        and not p.startswith("/api/auth/")
+    ]
     allowed = []
     for method, path in writes:
         response = _call(client, method, _fill(path, assessment_id=aid), headers)

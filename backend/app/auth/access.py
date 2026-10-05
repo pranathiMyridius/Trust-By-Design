@@ -24,6 +24,11 @@ from app.models.user import READ_ONLY_ROLES, User, UserRole
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
+# POSTs that change nothing, so the read-only roles (Auditor, Executive) may
+# still make them. Keep this list tiny and deliberate: the assistant only
+# reads, and only what the caller can already see.
+READ_ONLY_POST_ALLOWLIST = {("POST", "/api/assistant/chat")}
+
 # R16.4: who can still open a soft-deleted assessment (by id) -- the
 # people who administer retention and those who audit it. Nobody can
 # change one.
@@ -99,7 +104,11 @@ def enforce_api_access(
 
     # R15.1: an Auditor or Read-only Executive can look at everything they
     # can see, but change nothing.
-    if current_user.role in READ_ONLY_ROLES and request.method not in SAFE_METHODS:
+    if (
+        current_user.role in READ_ONLY_ROLES
+        and request.method not in SAFE_METHODS
+        and (request.method, request.url.path) not in READ_ONLY_POST_ALLOWLIST
+    ):
         log_denied_attempt(db, current_user, request, "read-only role")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

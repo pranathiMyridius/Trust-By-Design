@@ -27,6 +27,7 @@ export type NavIconName =
   | "check-circle"
   | "pencil"
   | "x-circle"
+  | "bot"
   | "file";
 
 const PATHS: Record<NavIconName, string[]> = {
@@ -52,6 +53,7 @@ const PATHS: Record<NavIconName, string[]> = {
   "check-circle": ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", "m8.5 12 2.5 2.5 4.5-5"],
   pencil: ["M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z", "m15 5 4 4"],
   "x-circle": ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", "m15 9-6 6", "m9 9 6 6"],
+  bot: ["M12 8V4H8", "M6 8h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z", "M2 14h2", "M20 14h2", "M9 13v2", "M15 13v2"],
   file: ["M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z", "M14 3v5h5"],
 };
 

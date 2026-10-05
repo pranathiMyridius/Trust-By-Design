@@ -136,6 +136,9 @@ class AuditAction(str, Enum):
     PROCESSING_RETRIED = "PROCESSING_RETRIED"
     BACKUP_CREATED = "BACKUP_CREATED"
     BACKUP_VERIFIED = "BACKUP_VERIFIED"
+    # The read-only assistant answered a question from this assessment's
+    # details (who looked at what; the question text is not recorded).
+    ASSISTANT_QUERY = "ASSISTANT_QUERY"
 
 
 def actor_name(user) -> str:
