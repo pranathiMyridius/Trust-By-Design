@@ -5727,3 +5727,33 @@ textarea[aria-invalid="true"] {
 .bell-panel li button strong { font-size: 13px; color: #111827; }
 .bell-panel li button span { font-size: 12px; color: #667085; text-transform: capitalize; }
 .bell-empty { margin: 0; padding: 16px 14px; font-size: 13px; color: #667085; }
+/* Sidebar "More" menu: the rarely used pages. */
+.rail-more { position: relative; display: flex; flex-direction: column; align-items: center; }
+.rail-more-menu {
+  position: absolute;
+  left: 52px;
+  top: 0;
+  min-width: 220px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(17, 24, 39, 0.12);
+  padding: 6px;
+  z-index: 60;
+}
+.rail-more-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+}
+.rail-more-menu button:hover { background: #f3f4f6; }
+.rail-more-menu button.active { background: #eef0f3; color: #111827; font-weight: 600; }

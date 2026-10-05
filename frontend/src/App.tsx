@@ -85,6 +85,25 @@ function AuthenticatedApp({
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<ActionFilter>("all");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // The rarely used pages live behind a "More" entry in the sidebar.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    function onPointerDown(event: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(event.target as Node)) setMoreOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMoreOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [moreOpen]);
 
   const [analyzingId, setAnalyzingId] = useState<number | null>(null);
   // Stage 19: progress of the background risk-analysis job, e.g. "40%".
@@ -255,6 +274,7 @@ function AuthenticatedApp({
     setShowCreateForm(false);
     setSelectedAssessment(null);
     setUserMenuOpen(false);
+    setMoreOpen(false);
   }
 
   const navItems: { page: Page; label: string; icon: NavIconName; visible: boolean }[] = [
@@ -286,6 +306,13 @@ function AuthenticatedApp({
     { page: "retention", label: "Retention & Legal Holds", icon: "calendar", visible: canViewRetention },
     { page: "system", label: "System Health", icon: "system", visible: user.role === "ADMIN" },
   ];
+
+  // Everyday pages stay in the rail; the rest sit under "More".
+  const PRIMARY_PAGES: Page[] = ["dashboard", "workqueue", "assessments", "reports", "approvals"];
+  const visibleItems = navItems.filter((item) => item.visible);
+  const primaryItems = visibleItems.filter((item) => PRIMARY_PAGES.includes(item.page));
+  const moreItems = visibleItems.filter((item) => !PRIMARY_PAGES.includes(item.page));
+  const moreActive = !showCreateForm && !selectedAssessment && moreItems.some((item) => item.page === currentPage);
 
   // R15.1: an Auditor or Read-only Executive sees but cannot change.
   const readOnly = READ_ONLY_ROLES.includes(user.role);
@@ -325,8 +352,7 @@ function AuthenticatedApp({
           </div>
 
           <nav aria-label="Main navigation" className="rail-nav">
-            {navItems
-              .filter((item) => item.visible)
+            {primaryItems
               .flatMap((item) => {
                 const button = (
                   <button
@@ -362,6 +388,39 @@ function AuthenticatedApp({
                   </button>,
                 ];
               })}
+            {moreItems.length > 0 && (
+              <div className="rail-more" ref={moreRef}>
+                <button
+                  className={`nav-item ${moreActive ? "active" : ""}`}
+                  aria-label="More"
+                  aria-expanded={moreOpen}
+                  aria-haspopup="true"
+                  data-tooltip={moreOpen ? undefined : "More"}
+                  type="button"
+                  onClick={() => {
+                    setMoreOpen((open) => !open);
+                    setUserMenuOpen(false);
+                  }}
+                >
+                  <NavIcon name="more" />
+                </button>
+                {moreOpen && (
+                  <div className="rail-more-menu" aria-label="More pages">
+                    {moreItems.map((item) => (
+                      <button
+                        key={item.page}
+                        type="button"
+                        className={currentPage === item.page && onMainPage ? "active" : ""}
+                        aria-current={currentPage === item.page && onMainPage ? "page" : undefined}
+                        onClick={() => goTo(item.page)}
+                      >
+                        <NavIcon name={item.icon} size={16} /> {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
 
           <div className="rail-footer">
