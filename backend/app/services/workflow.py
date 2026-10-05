@@ -224,7 +224,13 @@ TRANSITIONS: dict[str, dict[str, set[str]]] = {
         "MANAGER_REJECTED": {ASSIGNED_MANAGER},
         **_INFO_REQUEST,
     },
-    "RETURNED_BY_MANAGER": {"SUBMITTED_TO_MANAGER": {OWNER}, **_INFO_REQUEST},
+    # EVIDENCE_COLLECTION: inputs changed after the return, so the owner's
+    # resubmission goes back through analysis (see services/amendment.py).
+    "RETURNED_BY_MANAGER": {
+        "SUBMITTED_TO_MANAGER": {OWNER},
+        "EVIDENCE_COLLECTION": {OWNER},
+        **_INFO_REQUEST,
+    },
     "READY_FOR_COMMITTEE": {
         STATUS_COMMITTEE_REVIEW: _COMMITTEE,
         "INFORMATION_REQUESTED": _PIPELINE | _COMMITTEE,

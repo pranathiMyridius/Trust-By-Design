@@ -3714,3 +3714,19 @@ export async function decideAIChallengeFinding(
   }
   return response.json();
 }
+
+// After a manager return: what changed since, and whether resubmitting will
+// send the assessment back through analysis instead of to the manager.
+export interface AmendmentStatus {
+  requires_reanalysis: boolean;
+  since: string | null;
+  changes: { kind: "DOCUMENT" | "ASSESSMENT_REQUEST" | "BUSINESS_PROFILE"; description: string }[];
+}
+
+export async function getAmendmentStatus(assessmentId: number): Promise<AmendmentStatus> {
+  const response = await authFetch(`${API_BASE_URL}/api/assessments/${assessmentId}/amendment-status`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch amendment status");
+  }
+  return response.json();
+}

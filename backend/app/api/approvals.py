@@ -40,6 +40,7 @@ from app.services.decision_record_service import (
 )
 from app.services.reassessment_service import set_next_review_date
 from app.services import workflow
+from app.services.amendment import inputs_changed_since_return
 
 router = APIRouter(prefix="/api/assessments", tags=["Approvals"])
 
@@ -224,6 +225,36 @@ def submit_to_manager(
             ),
         )
 
+    # A returned assessment whose documents or request details changed since
+    # the return no longer rests on the analysis the manager saw: it goes
+    # back through analysis instead of straight back to the manager.
+    if assessment.status == STATUS_RETURNED_BY_MANAGER:
+        amendment = inputs_changed_since_return(db, assessment)
+        if amendment["requires_reanalysis"]:
+            previous_status = assessment.status
+            summary = "; ".join(change["description"] for change in amendment["changes"])
+            workflow.transition(
+                db,
+                assessment,
+                "EVIDENCE_COLLECTION",
+                user=current_user,
+                reason=f"Inputs changed after the manager's return, so re-analysis is required: {summary}",
+                action="REANALYSIS_REQUIRED",
+            )
+            log_audit_event(
+                db=db,
+                assessment_id=assessment.id,
+                action=AuditAction.REANALYSIS_REQUIRED,
+                previous_status=previous_status,
+                new_status=assessment.status,
+                actor=current_user.full_name or current_user.email,
+                actor_id=current_user.id,
+                details=f"Resubmitted after a manager return with changed inputs; sent back through analysis. {summary}",
+            )
+            db.commit()
+            db.refresh(assessment)
+            return assessment
+
     if not current_user.manager_id:
         raise HTTPException(
             status_code=400,
@@ -255,6 +286,26 @@ def submit_to_manager(
     db.commit()
     db.refresh(assessment)
     return assessment
+
+
+class AmendmentChange(BaseModel):
+    kind: str
+    description: str
+
+
+class AmendmentStatusResponse(BaseModel):
+    # True when resubmitting would send the assessment back through analysis.
+    requires_reanalysis: bool
+    since: datetime | None
+    changes: list[AmendmentChange]
+
+
+@router.get("/{assessment_id}/amendment-status", response_model=AmendmentStatusResponse)
+def amendment_status(assessment_id: int, db: Session = Depends(get_db)):
+    """What changed since the manager returned the assessment, and whether
+    resubmitting will therefore send it back through analysis."""
+
+    return inputs_changed_since_return(db, _get_assessment_or_404(db, assessment_id))
 
 
 class ManagerDecisionRequest(BaseModel):

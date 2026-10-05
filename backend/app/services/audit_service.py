@@ -142,6 +142,9 @@ class AuditAction(str, Enum):
     # AI challenge analysis: a run, and a reviewer's confirm / dismiss.
     AI_CHALLENGE_RUN = "AI_CHALLENGE_RUN"
     AI_CHALLENGE_DECIDED = "AI_CHALLENGE_DECIDED"
+    # The owner resubmitted after a manager return, but documents or request
+    # details had changed, so the assessment went back through analysis.
+    REANALYSIS_REQUIRED = "REANALYSIS_REQUIRED"
 
 
 def actor_name(user) -> str:

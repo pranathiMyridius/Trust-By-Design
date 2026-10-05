@@ -419,6 +419,12 @@ def _apply_intake_triage_and_routing(
 #     collapsing into INTAKE, since existing UI/audit history and the
 #     document-upload gate already treat REMEDIATION as a distinct,
 #     meaningful state.
+# Statuses in which the request fields may be edited / documents uploaded.
+# RETURNED_BY_MANAGER is the manager's "amendment required": the owner fixes
+# the request and its evidence, then resubmits.
+REQUEST_EDITABLE_STATUSES = {"INTAKE", "REMEDIATION", "RETURNED_BY_MANAGER"}
+DOCUMENT_UPLOAD_STATUSES = {"INTAKE", "EVIDENCE_COLLECTION", "REMEDIATION", "RETURNED_BY_MANAGER"}
+
 STAGE_ORDER = [
     "INTAKE",
     "EVIDENCE_COLLECTION",
@@ -2642,10 +2648,12 @@ def update_assessment(
             detail="Only the assessment owner or a reviewer can edit this request.",
         )
 
-    if assessment.status not in {"INTAKE", "REMEDIATION"}:
+    # RETURNED_BY_MANAGER: the owner corrects the request after the manager
+    # sent it back (the status itself is unchanged by the edit).
+    if assessment.status not in REQUEST_EDITABLE_STATUSES:
         raise HTTPException(
             status_code=400,
-            detail="Assessment can only be edited while in INTAKE or REMEDIATION.",
+            detail="Assessment can only be edited while in INTAKE, REMEDIATION or RETURNED_BY_MANAGER.",
         )
 
     data = assessment_data.model_dump()
@@ -2862,10 +2870,15 @@ async def upload_assessment_document(
     # INTAKE is included so initial supporting documents can be attached
     # at the point of entry, not only once formal evidence collection
     # begins (Intake feature: "Basic Document & Attachment Upload").
-    if assessment.status not in {"INTAKE", "EVIDENCE_COLLECTION", "REMEDIATION"}:
+    # RETURNED_BY_MANAGER: the owner can add or replace evidence the manager
+    # asked for before resubmitting.
+    if assessment.status not in DOCUMENT_UPLOAD_STATUSES:
         raise HTTPException(
             status_code=400,
-            detail="Documents can only be uploaded while in INTAKE, EVIDENCE_COLLECTION or REMEDIATION.",
+            detail=(
+                "Documents can only be uploaded while in INTAKE, EVIDENCE_COLLECTION, "
+                "REMEDIATION or RETURNED_BY_MANAGER."
+            ),
         )
 
     if document_type not in DOCUMENT_TYPES:
