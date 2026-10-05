@@ -148,6 +148,66 @@ function AuthenticatedApp({
     hadAssessmentOpenRef.current = selectedAssessmentId !== null;
   }, [selectedAssessmentId]);
 
+  /*
+   * Browser Back / Forward. The app keeps its place in React state, so
+   * without this the browser's Back button leaves the app altogether
+   * (e.g. Audit History -> assessment -> Back used to jump out of the
+   * app). Each page / opened assessment / intake form is a history entry.
+   */
+  const navState = { page: currentPage, assessmentId: selectedAssessmentId, create: showCreateForm };
+  const navRef = useRef(navState);
+  navRef.current = navState;
+  const assessmentsRef = useRef<Assessment[]>(assessments);
+  assessmentsRef.current = assessments;
+  const restoringRef = useRef(false);
+
+  useEffect(() => {
+    const prev = window.history.state as typeof navState | null;
+    if (restoringRef.current) {
+      if (prev && prev.page === navState.page && prev.assessmentId === navState.assessmentId && prev.create === navState.create) {
+        restoringRef.current = false;
+      }
+      return;
+    }
+    if (!prev || typeof prev.page !== "string") {
+      window.history.replaceState(navState, "");
+    } else if (prev.page !== navState.page || prev.assessmentId !== navState.assessmentId || prev.create !== navState.create) {
+      window.history.pushState(navState, "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, selectedAssessmentId, showCreateForm]);
+
+  useEffect(() => {
+    function onPopState(event: PopStateEvent) {
+      const target = event.state as typeof navState | null;
+      if (!target || typeof target.page !== "string") return;
+      const current = navRef.current;
+      restoringRef.current =
+        target.page !== current.page || target.assessmentId !== current.assessmentId || target.create !== current.create;
+      setCurrentPage(target.page);
+      setShowCreateForm(Boolean(target.create));
+      setUserMenuOpen(false);
+      setMoreOpen(false);
+      if (target.assessmentId == null) {
+        setSelectedAssessment(null);
+        return;
+      }
+      const known = assessmentsRef.current.find((item) => item.id === target.assessmentId);
+      if (known) {
+        setSelectedAssessment(known);
+      } else {
+        getAssessment(target.assessmentId)
+          .then((fetched) => setSelectedAssessment(fetched))
+          .catch(() => {
+            restoringRef.current = false;
+            setSelectedAssessment(null);
+          });
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   function openAssessment(assessment: Assessment) {
     // Open immediately with whatever we already have (no loading flash),
     // then swap in a fresh copy — the in-memory `assessments` list is
