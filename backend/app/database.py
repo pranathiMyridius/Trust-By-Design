@@ -33,9 +33,21 @@ if _tls_problem and (is_production() or not insecure_transport_allowed()):
 
 connect_args = {"check_same_thread": False} if not IS_POSTGRES else {}
 
+# Hosted Postgres (e.g. Neon) drops idle SSL connections server-side, so a
+# pooled connection can be dead by the time it is reused ("SSL connection has
+# been closed unexpectedly"). pre_ping tests a connection on checkout and
+# transparently replaces a dead one; recycle retires connections before the
+# server's idle timeout. Both are no-ops for SQLite.
+_pool_args = (
+    {"pool_pre_ping": True, "pool_recycle": int(os.getenv("DATABASE_POOL_RECYCLE_SECONDS", "240"))}
+    if IS_POSTGRES
+    else {}
+)
+
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
+    **_pool_args,
 )
 
 if not IS_POSTGRES:
