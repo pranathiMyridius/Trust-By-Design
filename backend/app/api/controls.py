@@ -771,3 +771,192 @@ def assess_control_design_endpoint(
         rationale=assessment_result["rationale"],
         apply_to_control=False
     )
+
+
+# ---------------------------------------------------------------------------
+# AI evidence check: suggestions that uploaded documents support a control.
+# The AI only suggests; an analyst accepting a suggestion is what records
+# evidence on the control.
+# ---------------------------------------------------------------------------
+
+
+class EvidenceLinkResponse(BaseModel):
+    id: int
+    control_id: int
+    document_id: int | None
+    document_name: str | None
+    document_version: int | None
+    # False when the document has since been replaced by a newer version:
+    # the link should be re-checked.
+    document_is_current: bool
+    support_level: str
+    confidence: str | None
+    quote: str | None
+    rationale: str | None
+    shortfalls: list[str]
+    suggested_effectiveness: str | None
+    status: str
+    model: str | None
+    checked_at: datetime
+    decided_by: str | None
+    decided_at: datetime | None
+    decision_note: str | None
+
+
+class EvidenceCheckSummary(BaseModel):
+    status: str
+    controls_checked: int
+    controls_failed: int
+    links: list[EvidenceLinkResponse]
+
+
+class EvidenceLinkDecision(BaseModel):
+    decision: str  # ACCEPT | REJECT
+    note: str | None = None
+
+
+def _evidence_links(db: Session, assessment_id: int) -> list[EvidenceLinkResponse]:
+    from app.models.assessment_document import AssessmentDocument
+    from app.models.control_evidence import ControlEvidenceLink
+
+    rows = (
+        db.query(ControlEvidenceLink, AssessmentDocument)
+        .outerjoin(AssessmentDocument, AssessmentDocument.id == ControlEvidenceLink.document_id)
+        .join(Control, Control.id == ControlEvidenceLink.control_id)
+        .filter(
+            ControlEvidenceLink.assessment_id == assessment_id,
+            ControlEvidenceLink.status != "SUPERSEDED",
+            Control.is_current.is_(True),
+        )
+        .order_by(ControlEvidenceLink.control_id.asc(), ControlEvidenceLink.id.asc())
+        .all()
+    )
+    return [
+        EvidenceLinkResponse(
+            id=link.id,
+            control_id=link.control_id,
+            document_id=link.document_id,
+            document_name=document.filename if document else None,
+            document_version=link.document_version,
+            document_is_current=bool(document and document.is_current),
+            support_level=link.support_level,
+            confidence=link.confidence,
+            quote=link.quote,
+            rationale=link.rationale,
+            shortfalls=json.loads(link.shortfalls) if link.shortfalls else [],
+            suggested_effectiveness=link.suggested_effectiveness,
+            status=link.status,
+            model=link.model,
+            checked_at=link.checked_at,
+            decided_by=link.decided_by,
+            decided_at=link.decided_at,
+            decision_note=link.decision_note,
+        )
+        for link, document in rows
+    ]
+
+
+@router.get("/{assessment_id}/evidence-links", response_model=list[EvidenceLinkResponse])
+def list_evidence_links(assessment_id: int, db: Session = Depends(get_db)):
+    _get_assessment_or_404(db, assessment_id)
+    return _evidence_links(db, assessment_id)
+
+
+@router.post("/{assessment_id}/evidence-check", response_model=EvidenceCheckSummary)
+def run_evidence_check_endpoint(
+    assessment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_pipeline_role),
+):
+    """Re-run the AI evidence check against the assessment's current documents."""
+
+    from app.services.control_evidence_service import run_evidence_check
+
+    assessment = _get_assessment_or_404(db, assessment_id)
+    ensure_assessment_editable(assessment)
+    summary = run_evidence_check(db, assessment_id)
+    log_audit_event(
+        db=db,
+        assessment_id=assessment_id,
+        action=AuditAction.CONTROL_ASSESSED,
+        actor=actor_name(current_user),
+        actor_id=current_user.id,
+        details=(
+            f"AI evidence check ({summary['status']}): {summary['controls_checked']} control(s) checked, "
+            f"{summary['controls_failed']} could not be checked."
+        ),
+    )
+    db.commit()
+    return EvidenceCheckSummary(**summary, links=_evidence_links(db, assessment_id))
+
+
+@router.post(
+    "/{assessment_id}/evidence-links/{link_id}/decision",
+    response_model=EvidenceLinkResponse,
+)
+def decide_evidence_link(
+    assessment_id: int,
+    link_id: int,
+    payload: EvidenceLinkDecision,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_pipeline_role),
+):
+    """Accept (records evidence on the control) or reject an AI suggestion."""
+
+    from app.models.control_evidence import ControlEvidenceLink
+    from app.services.control_evidence_service import accept_link, reject_link
+
+    assessment = _get_assessment_or_404(db, assessment_id)
+    ensure_assessment_editable(assessment)
+
+    decision = (payload.decision or "").upper()
+    if decision not in ("ACCEPT", "REJECT"):
+        raise HTTPException(status_code=400, detail="decision must be ACCEPT or REJECT.")
+
+    link = (
+        db.query(ControlEvidenceLink)
+        .filter(ControlEvidenceLink.id == link_id, ControlEvidenceLink.assessment_id == assessment_id)
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Evidence suggestion not found")
+    if link.status != "SUGGESTED":
+        raise HTTPException(status_code=409, detail=f"This suggestion is already {link.status.lower()}.")
+    control = _get_current_control_or_404(db, assessment_id, link.control_id)
+    name = actor_name(current_user)
+
+    if decision == "ACCEPT":
+        if link.document_id is None or link.support_level not in ("SUPPORTED", "PARTIAL"):
+            raise HTTPException(
+                status_code=400,
+                detail="There is no supporting document to accept; upload evidence or reject this result.",
+            )
+        wrote = accept_link(db, control, link, name, current_user.id)
+        log_audit_event(
+            db=db,
+            assessment_id=assessment_id,
+            action=AuditAction.CONTROL_ASSESSED,
+            actor=name,
+            actor_id=current_user.id,
+            details=(
+                f"Accepted AI evidence suggestion {link.id} for control {control.control_type} "
+                f"(id={control.id}), document {link.document_id} v{link.document_version}"
+                + ("; evidence recorded." if wrote else "; control already had evidence recorded.")
+            ),
+        )
+        if wrote:
+            recompute_control_state(db, assessment_id)
+            _refreeze_residual_if_frozen(db, assessment, current_user, f"evidence was accepted for control {control.id}")
+    else:
+        reject_link(link, name, current_user.id, payload.note)
+        log_audit_event(
+            db=db,
+            assessment_id=assessment_id,
+            action=AuditAction.CONTROL_ASSESSED,
+            actor=name,
+            actor_id=current_user.id,
+            details=f"Rejected AI evidence suggestion {link.id} for control {control.control_type} (id={control.id}).",
+        )
+
+    db.commit()
+    return next(item for item in _evidence_links(db, assessment_id) if item.id == link_id)

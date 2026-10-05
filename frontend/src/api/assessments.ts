@@ -3574,3 +3574,74 @@ export async function getOccRiskProfile(
 
   return response.json();
 }
+
+// AI evidence check: suggestions that uploaded documents support a control.
+// The AI only suggests; accepting one records evidence on the control.
+export interface EvidenceLink {
+  id: number;
+  control_id: number;
+  document_id: number | null;
+  document_name: string | null;
+  document_version: number | null;
+  // False once the document has been replaced by a newer version.
+  document_is_current: boolean;
+  support_level: "SUPPORTED" | "PARTIAL" | "NONE";
+  confidence: "LOW" | "MEDIUM" | "HIGH" | null;
+  quote: string | null;
+  rationale: string | null;
+  shortfalls: string[];
+  suggested_effectiveness: string | null;
+  status: "SUGGESTED" | "ACCEPTED" | "REJECTED";
+  model: string | null;
+  checked_at: string;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+}
+
+export interface EvidenceCheckSummary {
+  status: "OK" | "NO_DOCUMENTS" | "AI_UNAVAILABLE" | "NO_CONTROLS";
+  controls_checked: number;
+  controls_failed: number;
+  links: EvidenceLink[];
+}
+
+export async function listEvidenceLinks(assessmentId: number): Promise<EvidenceLink[]> {
+  const response = await authFetch(`${API_BASE_URL}/api/assessments/${assessmentId}/evidence-links`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch evidence suggestions");
+  }
+  return response.json();
+}
+
+export async function runEvidenceCheck(assessmentId: number): Promise<EvidenceCheckSummary> {
+  const response = await authFetch(`${API_BASE_URL}/api/assessments/${assessmentId}/evidence-check`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const detail = await readErrorDetail(response);
+    throw new Error(detail || "The evidence check couldn't be run");
+  }
+  return response.json();
+}
+
+export async function decideEvidenceLink(
+  assessmentId: number,
+  linkId: number,
+  decision: "ACCEPT" | "REJECT",
+  note?: string
+): Promise<EvidenceLink> {
+  const response = await authFetch(
+    `${API_BASE_URL}/api/assessments/${assessmentId}/evidence-links/${linkId}/decision`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, note: note || null }),
+    }
+  );
+  if (!response.ok) {
+    const detail = await readErrorDetail(response);
+    throw new Error(detail || "The decision couldn't be recorded");
+  }
+  return response.json();
+}

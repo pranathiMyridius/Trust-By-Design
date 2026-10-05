@@ -52,6 +52,7 @@ from app.models.user import User, UserRole
 from app.models.assessment_comment import AssessmentComment
 from app.models.control import Control, ControlAssessment, ControlCondition, ControlGap
 from app.models.challenge_review import ChallengeFinding, ChallengeTriggerConfig
+from app.models.control_evidence import ControlEvidenceLink
 from app.models.assessment_draft import AssessmentDraft
 from app.models.committee_condition import CommitteeCondition
 from app.models.country_risk import CountryRisk

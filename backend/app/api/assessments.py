@@ -6214,6 +6214,21 @@ def advance_assessment_stage(
             from app.control_engine.engine import recompute_control_state
             recompute_control_state(db, assessment_id)
 
+            # AI evidence check against the uploaded documents. Suggestions
+            # only -- an analyst accepts them -- and a failure never blocks
+            # the stage.
+            try:
+                from app.services.control_evidence_service import run_evidence_check
+
+                run_evidence_check(db, assessment_id)
+            except Exception as evidence_exc:  # noqa: BLE001
+                db.rollback()
+                logging.getLogger(__name__).warning(
+                    "Automatic evidence check failed for assessment %s: %s",
+                    assessment_id,
+                    evidence_exc,
+                )
+
         except Exception as exc:
             stage_progress.warn_running()
             logging.getLogger(__name__).warning(
