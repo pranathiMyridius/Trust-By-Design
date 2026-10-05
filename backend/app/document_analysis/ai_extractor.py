@@ -156,7 +156,7 @@ Return ONLY valid JSON with exactly this shape:
 {{
   "title": "Name of the proposed business change or initiative.",
   "change_type": "NEW_PRODUCT | NEW_SERVICE | NEW_CUSTOMER_SEGMENT | NEW_GEOGRAPHY | PROCESS_CHANGE | TECHNOLOGY_CHANGE | THIRD_PARTY_INTRODUCTION | TRANSACTION_LIMIT_OR_CHANNEL_CHANGE | PERIODIC_REASSESSMENT",
-  "business_description": "Clear summary of what the change is and what the business intends to do.",
+  "business_description": "A detailed summary (one to three paragraphs, roughly 120-300 words) of what the change is, why the business wants it, who it affects, how it will work, and any scope, timing or dependencies the document states. Use only facts from the document.",
   "evidence": "A SHORT synthesis (2-5 sentences, or short bullet-style clauses separated by semicolons) of the key facts that support the assessment -- not the document's contents.",
   "business_line": "string or null",
   "product_or_service_name": "Name of the specific product or service being introduced or changed, or null.",
