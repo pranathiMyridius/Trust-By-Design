@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import os
 import secrets
@@ -53,3 +54,40 @@ def decode_access_token(token: str) -> str | None:
         return None
 
     return payload.get("sub")
+
+
+# Password reset tokens are signed, expire quickly, and carry a fingerprint
+# of the password hash they were issued against -- so the moment the password
+# changes (by this reset or any other) the token stops working. That makes
+# each link single-use without storing anything.
+RESET_TOKEN_MINUTES = int(os.getenv("PASSWORD_RESET_MINUTES", "30"))
+
+
+def _password_fingerprint(hashed_password: str) -> str:
+    return hashlib.sha256(hashed_password.encode()).hexdigest()[:20]
+
+
+def create_reset_token(user_id: int, hashed_password: str) -> str:
+    payload = {
+        "sub": str(user_id),
+        "purpose": "password-reset",
+        "pwf": _password_fingerprint(hashed_password),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_MINUTES),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def read_reset_token(token: str) -> tuple[int, str] | None:
+    """(user id, password fingerprint) for a valid, unexpired reset token."""
+
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("purpose") != "password-reset":
+            return None
+        return int(payload["sub"]), str(payload["pwf"])
+    except (JWTError, KeyError, ValueError):
+        return None
+
+
+def reset_token_matches(token_fingerprint: str, hashed_password: str) -> bool:
+    return secrets.compare_digest(token_fingerprint, _password_fingerprint(hashed_password))

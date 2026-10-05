@@ -133,3 +133,27 @@ export async function updateUser(
 
   return response.json();
 }
+
+export async function requestPasswordReset(email: string): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    throw new Error((await readErrorDetail(response)) || "The reset request couldn't be sent. Please try again.");
+  }
+  return (await response.json()).message;
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!response.ok) {
+    throw new Error((await readErrorDetail(response)) || "The password couldn't be reset. Please try again.");
+  }
+  return (await response.json()).message;
+}
