@@ -226,34 +226,18 @@ export default function WorkflowPanel({ assessment, user, onAssessmentChanged, o
         </div>
       </div>
 
-      <dl className="wf-grid">
+      <dl className="wf-grid wf-grid-compact">
         <div>
           <dt>Current owner</dt>
           <dd>{summary.owner.owner_name}</dd>
-        </div>
-        <div>
-          <dt>Team</dt>
-          <dd>{summary.owner.team}</dd>
         </div>
         <div className="wf-grid-wide">
           <dt>Next action</dt>
           <dd>{summary.owner.next_action}</dd>
         </div>
         <div>
-          <dt>In this status since</dt>
-          <dd>{formatDateTime(summary.status_entered_at)}</dd>
-        </div>
-        <div>
           <dt>Status due{summary.sla_days ? ` (${summary.sla_days}-day SLA)` : ""}</dt>
           <dd>{summary.status_due_at ? formatDateTime(summary.status_due_at) : "No SLA"}</dd>
-        </div>
-        <div>
-          <dt>Target completion</dt>
-          <dd>{formatDate(summary.target_date)}</dd>
-        </div>
-        <div>
-          <dt>Priority</dt>
-          <dd>{summary.priority ?? "—"}</dd>
         </div>
       </dl>
 
@@ -349,32 +333,53 @@ export default function WorkflowPanel({ assessment, user, onAssessmentChanged, o
 
       {actionError && <div className="wf-banner wf-banner-danger" role="alert">{actionError}</div>}
 
-      {!isClosed && summary.available_transitions.length > 0 && (
-        <div className="wf-next">
-          <span className="wf-eyebrow">Permitted next statuses</span>
-          <div className="wf-chips">
-            {summary.available_transitions.map((next) => (
-              <span
-                key={next.to_status}
-                className={`wf-chip ${next.allowed_for_user ? "" : "wf-chip-locked"}`}
-                title={
-                  next.allowed_for_user
-                    ? `You can make this move (${next.to_status})`
-                    : `Requires: ${next.roles.join(", ")}`
-                }
-              >
-                {next.to_workflow_label}
-                {!next.allowed_for_user && (
-                  <>
-                    <span aria-hidden="true"> 🔒</span>
-                    <span className="sr-only"> (locked — requires {next.roles.join(", ")})</span>
-                  </>
-                )}
-              </span>
-            ))}
+      <details className="wf-more">
+        <summary>More details</summary>
+        <dl className="wf-grid">
+          <div>
+            <dt>Team</dt>
+            <dd>{summary.owner.team}</dd>
           </div>
-        </div>
-      )}
+          <div>
+            <dt>In this status since</dt>
+            <dd>{formatDateTime(summary.status_entered_at)}</dd>
+          </div>
+          <div>
+            <dt>Target completion</dt>
+            <dd>{formatDate(summary.target_date)}</dd>
+          </div>
+          <div>
+            <dt>Priority</dt>
+            <dd>{summary.priority ?? "—"}</dd>
+          </div>
+        </dl>
+        {!isClosed && summary.available_transitions.length > 0 && (
+          <div className="wf-next">
+            <span className="wf-eyebrow">Permitted next statuses</span>
+            <div className="wf-chips">
+              {summary.available_transitions.map((next) => (
+                <span
+                  key={next.to_status}
+                  className={`wf-chip ${next.allowed_for_user ? "" : "wf-chip-locked"}`}
+                  title={
+                    next.allowed_for_user
+                      ? `You can make this move (${next.to_status})`
+                      : `Requires: ${next.roles.join(", ")}`
+                  }
+                >
+                  {next.to_workflow_label}
+                  {!next.allowed_for_user && (
+                    <>
+                      <span aria-hidden="true"> 🔒</span>
+                      <span className="sr-only"> (locked — requires {next.roles.join(", ")})</span>
+                    </>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </details>
 
       {/* R14.5: every status change -- previous and new status, user, time, reason. */}
       <details className="wf-history">

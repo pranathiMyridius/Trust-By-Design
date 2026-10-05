@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import "./StageMoveModal.css";
 
-import type { Assessment } from "../api/assessments";
+import type { Assessment, RiskResult } from "../api/assessments";
 import type { CurrentUser } from "../api/auth";
 import type { ProcessingJob, ProcessingStage } from "../api/processing";
 import NavIcon from "./NavIcons";
@@ -88,6 +88,8 @@ interface StageMoveModalProps {
   /** Null while the start request is still in flight. */
   job: ProcessingJob | null;
   documentCount: number;
+  /** The AI's per-category prediction, shown once Risk Identification finishes. */
+  riskResults?: RiskResult[];
   retrying: boolean;
   onRetry: () => void;
   /** Close the dialog; a running move carries on in the background. */
@@ -100,6 +102,7 @@ export default function StageMoveModal({
   fromStatus,
   job,
   documentCount,
+  riskResults = [],
   retrying,
   onRetry,
   onClose,
@@ -258,6 +261,33 @@ export default function StageMoveModal({
             })}
           </ol>
 
+          {engineKnown && (
+            <>
+              <h3 className="rim-section">AI Prediction</h3>
+              {riskResults.length === 0 ? (
+                <p className="rim-hint">
+                  No AI prediction was produced for this run; add the risk factors manually on the next step.
+                </p>
+              ) : (
+                <ul className="rim-prediction" aria-label="AI risk prediction">
+                  {[...riskResults]
+                    .sort((a, b) => b.score - a.score)
+                    .map((result) => (
+                      <li key={result.id} className="rim-pred-row">
+                        <div className="rim-pred-head">
+                          <strong>{result.dimension.replace(/_/g, " ")}</strong>
+                          <span className={`rim-sev rim-sev-${result.severity.toLowerCase()}`}>
+                            {result.severity} · {result.score}
+                          </span>
+                        </div>
+                        <span className="rim-pred-reason">{result.reason}</span>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </>
+          )}
+
           {showEngines && (
             <>
               <h3 className="rim-section">Decision Engine</h3>
@@ -300,7 +330,7 @@ export default function StageMoveModal({
               </button>
             )}
             <button type="button" className="rim-btn" onClick={onClose}>
-              {running ? "Continue in Background" : "Close"}
+              {running ? "Continue in Background" : engineKnown ? "Continue" : "Close"}
             </button>
           </div>
         </footer>

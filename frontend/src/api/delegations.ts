@@ -108,6 +108,19 @@ export function activeDelegationsFor(delegations: Delegation[], userId: number):
   return delegations.filter((d) => d.delegate_id === userId && d.state === "ACTIVE");
 }
 
+// Whether `delegation` reaches `assessment`. The backend re-checks on decision.
+export function delegationCovers(
+  delegation: Delegation,
+  assessment: { id: number; manager_id?: number | null }
+): boolean {
+  if (delegation.scope_type === "ASSESSMENT") {
+    return delegation.scope_assessment_id === assessment.id;
+  }
+  return delegation.authority === "MANAGER_APPROVAL"
+    ? assessment.manager_id === delegation.delegator_id
+    : true;
+}
+
 export function formatWindow(delegation: Delegation): string {
   const format = (value: string) =>
     new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });

@@ -1,0 +1,26 @@
+/* Committee panel: reuses the card, tile, chip and checklist styles from ManagerDecisionPanel.css. */
+.cdp-section { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.cdp-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.cdp-section-head h3, .cdp-section-head h4 { margin: 0; font-size: 14px; }
+.cdp-members { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.cdp-member { display: flex; justify-content: flex-start; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e5e7eb; }
+.cdp-member > div { display: flex; flex-direction: column; gap: 2px; font-size: 13px; min-width: 0; flex: 1; }
+.cdp-member span:not(.mdp-chip):not(.cdp-avatar) { font-size: 12px; color: #64748b; }
+.cdp-member .mdp-chip { margin-left: auto; }
+.cdp-avatar { width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0; color: #334155; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.cdp-chip-neutral { background: #eef0f3; color: #475569; }
+.cdp-note { margin: 0; font-size: 13px; }
+.cdp-abstain { background: #64748b; }
+.cdp-conditional { background: #1d6fb8; }
+.cdp-history summary { cursor: pointer; font-size: 12px; color: #64748b; }
+.cdp-link { background: none; border: 0; padding: 0; color: #1d4ed8; font-weight: 600; font-size: 13px; cursor: pointer; }
+.cdp-package { margin-top: 8px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
+.cdp-conditions { display: flex; flex-direction: column; gap: 8px; }
+.cdp-condition { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cdp-condition input, .cdp-condition select { flex: 1 1 110px; min-width: 0; }
+.cdp-condition .cdp-grow { flex: 3 1 220px; }
+.cdp-add { background: #0f172a; color: #fff; border: 0; border-radius: 8px; padding: 9px 20px; font-weight: 600; cursor: pointer; }
+.cdp-caption { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; }
+.cdp-committed { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: #f8fafc; font-size: 13px; }
+.cdp-committed em { color: #64748b; font-style: normal; font-size: 12px; }
+.cdp-remove { border: 0; background: none; color: #b42318; cursor: pointer; font-size: 14px; }

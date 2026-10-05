@@ -274,9 +274,17 @@ export default function ReassessmentPanel({ assessmentId, onOpenAssessment }: { 
 
   if (!status) {
     return (
-      <section className="content-card" style={{ marginTop: 16 }} aria-label="Reassessment">
-        <h4 style={{ marginTop: 0 }}>Reassessment &amp; Change Management</h4>
-        {error ? <p role="alert" className="field-error">{error}</p> : <p>Loading…</p>}
+      <section className="workflow-card" style={{ marginTop: 16 }} aria-label="Reassessment">
+        <div className="workflow-card-header">
+          <div>
+            <h2>Reassessment &amp; Change Management</h2>
+            <p>Review dates, change triggers and reassessments for this assessment.</p>
+          </div>
+          <span className="source-badge">REASSESSMENT</span>
+        </div>
+        <div className="workflow-card-body">
+          {error ? <p role="alert" className="field-error">{error}</p> : <p>Loading…</p>}
+        </div>
       </section>
     );
   }
@@ -286,8 +294,15 @@ export default function ReassessmentPanel({ assessmentId, onOpenAssessment }: { 
   const hasReassessment = status.reassessments.length > 0;
 
   return (
-    <section className="content-card" style={{ marginTop: 16 }} aria-label="Reassessment">
-      <h4 style={{ marginTop: 0 }}>Reassessment &amp; Change Management</h4>
+    <section className="workflow-card" style={{ marginTop: 16 }} aria-label="Reassessment">
+      <div className="workflow-card-header">
+        <div>
+          <h2>Reassessment &amp; Change Management</h2>
+          <p>Review dates, change triggers and reassessments for this assessment.</p>
+        </div>
+        <span className="source-badge">REASSESSMENT</span>
+      </div>
+      <div className="workflow-card-body">
 
       <div data-testid="reassessment-state" style={{ marginBottom: 8 }}>
         {status.reassessment_state === "SUPERSEDED" && status.superseded_by_id ? (
@@ -396,6 +411,7 @@ export default function ReassessmentPanel({ assessmentId, onOpenAssessment }: { 
       ) : status.actions.propose.reason && (status.status === "APPROVED" || status.status === "APPROVED_WITH_CONDITIONS" || status.status === "CLOSED") ? (
         <p style={{ fontSize: 12, color: "#6b7280" }}>Proposing a change: {status.actions.propose.reason}</p>
       ) : null}
+      </div>
     </section>
   );
 }

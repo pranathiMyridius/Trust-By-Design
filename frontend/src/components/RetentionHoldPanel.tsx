@@ -88,8 +88,15 @@ export default function RetentionHoldPanel({ assessmentId }: { assessmentId: num
   return (
     // Bottom margin: the last card on the page stays clear of the fixed
     // "Back to top" button.
-    <section className="content-card" style={{ marginTop: 16, marginBottom: 72 }} aria-label="Retention and legal hold">
-      <h4 style={{ marginTop: 0 }}>Retention &amp; Legal Hold</h4>
+    <section className="workflow-card" style={{ marginTop: 16, marginBottom: 72 }} aria-label="Retention and legal hold">
+      <div className="workflow-card-header">
+        <div>
+          <h2>Retention &amp; Legal Hold</h2>
+          <p>Legal hold status, retention policy and deletion eligibility for this assessment.</p>
+        </div>
+        <span className="source-badge">RETENTION</span>
+      </div>
+      <div className="workflow-card-body">
       <p role="note" style={{ fontSize: 12, color: "#9a3412", margin: "0 0 6px" }}>
         Retention periods are provisional ({POLICY_PENDING_LABEL}); not compliance-approved.
       </p>
@@ -185,6 +192,7 @@ export default function RetentionHoldPanel({ assessmentId }: { assessmentId: num
           )}
         </div>
       )}
+      </div>
     </section>
   );
 }

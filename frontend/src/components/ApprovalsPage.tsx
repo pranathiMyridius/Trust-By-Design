@@ -1,22 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Assessment } from "../api/assessments";
-import {
-  submitManagerDecision,
-  submitCommitteeDecision,
-  getDecisionPackage,
-  castCommitteeVote,
-  type ManagerDecision,
-  type CommitteeDecisionOption,
-  type CommitteeConditionInput,
-  type DecisionPackage,
-} from "../api/assessments";
 import type { CurrentUser } from "../api/auth";
-import { activeDelegationsFor, listDelegations, type Delegation } from "../api/delegations";
+import { activeDelegationsFor, delegationCovers as covers, listDelegations, type Delegation } from "../api/delegations";
 import RiskLevelBadge from "./RiskLevelBadge";
-import { friendlyError } from "../utils/errorMessages";
-import DecisionPackageView from "./DecisionPackageView";
-import { ChallengeSignoffPanel, CommitteeReadinessPanel, VoteHistoryList } from "./GovernanceRecordPanels";
-import { getVoteHistory, type VoteRecord } from "../api/governanceRecords";
+import CommitteeDecisionPanel from "./CommitteeDecisionPanel";
 
 interface ApprovalsPageProps {
   user: CurrentUser;
@@ -50,7 +37,7 @@ export default function ApprovalsPage({
           <h2>Approvals</h2>
           <p>
             {isManager
-              ? "Assessments your direct reports have submitted for your review."
+              ? "Pending tasks: assessments your direct reports have submitted for your decision. Open one to review the findings and approve, return or reject it."
               : "Assessments approved by a manager and ready for committee sign-off."}
             {delegations.length > 0 && " Items you are covering as a delegate are marked."}
           </p>
@@ -89,15 +76,6 @@ interface QueueItem {
   mode: "manager" | "committee";
   // Set when the user acts on this item as a delegate (AW.7).
   delegation?: Delegation;
-}
-
-function covers(delegation: Delegation, assessment: Assessment): boolean {
-  if (delegation.scope_type === "ASSESSMENT") {
-    return delegation.scope_assessment_id === assessment.id;
-  }
-  return delegation.authority === "MANAGER_APPROVAL"
-    ? assessment.manager_id === delegation.delegator_id
-    : true;
 }
 
 // The user's own queue, plus whatever their active delegations cover.
@@ -144,145 +122,6 @@ function ApprovalRow({
   onOpen: () => void;
   onDecisionRecorded: () => void;
 }) {
-  const [comment, setComment] = useState("");
-  const [rationale, setRationale] = useState("");
-  const [structuredConditions, setStructuredConditions] = useState<
-    CommitteeConditionInput[]
-  >([{ description: "", owner: "", due_date: "", priority: "MEDIUM" }]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // P3: bumped after governance actions so the readiness panel re-checks.
-  const [readinessKey, setReadinessKey] = useState(0);
-  // Stage 19: field-level flag for the required committee rationale.
-  const [rationaleMissing, setRationaleMissing] = useState(false);
-
-  // R12.2: the decision package, shown to the committee before they act.
-  const [showPackage, setShowPackage] = useState(false);
-  const [decisionPackage, setDecisionPackage] = useState<DecisionPackage | null>(null);
-  const [packageLoading, setPackageLoading] = useState(false);
-
-  // R12.6: individual member vote, separate from the final decision.
-  // Append-only (R12.6): every vote, superseded ones included.
-  const [votes, setVotes] = useState<VoteRecord[]>([]);
-  const [voteComment, setVoteComment] = useState("");
-  const [recastReason, setRecastReason] = useState("");
-  const [recastReasonMissing, setRecastReasonMissing] = useState(false);
-  const [votingLoading, setVotingLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isManager) {
-      getVoteHistory(assessment.id).then(setVotes).catch(() => setVotes([]));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessment.id]);
-
-  // The seat this user votes in: their own, or the delegator's (AW.7).
-  const seatId = delegation ? delegation.delegator_id : user.id;
-  const seatVote = votes.find((v) => v.member_id === seatId && v.is_current);
-
-  async function toggleDecisionPackage() {
-    if (showPackage) {
-      setShowPackage(false);
-      return;
-    }
-    setShowPackage(true);
-    if (!decisionPackage) {
-      setPackageLoading(true);
-      try {
-        setDecisionPackage(await getDecisionPackage(assessment.id));
-      } catch (err) {
-        setError(friendlyError(err, "The decision package couldn't be loaded. Please try again."));
-      } finally {
-        setPackageLoading(false);
-      }
-    }
-  }
-
-  async function runCastVote(vote: "APPROVE" | "DISSENT" | "ABSTAIN") {
-    if (seatVote && !recastReason.trim()) {
-      setRecastReasonMissing(true);
-      setError("Give a reason for changing the vote — the earlier vote stays on record.");
-      return;
-    }
-    setRecastReasonMissing(false);
-    setVotingLoading(true);
-    setError(null);
-    try {
-      await castCommitteeVote(
-        assessment.id,
-        vote,
-        voteComment || undefined,
-        seatVote ? recastReason.trim() : undefined
-      );
-      setVotes(await getVoteHistory(assessment.id));
-      setRecastReason("");
-      setVoteComment("");
-    } catch (err) {
-      setError(friendlyError(err, "Your vote couldn't be recorded. Please try again."));
-    } finally {
-      setVotingLoading(false);
-    }
-  }
-
-  function updateCondition(index: number, field: keyof CommitteeConditionInput, value: string) {
-    setStructuredConditions((current) =>
-      current.map((condition, i) =>
-        i === index ? { ...condition, [field]: value } : condition
-      )
-    );
-  }
-
-  async function runManagerDecision(decision: ManagerDecision) {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await submitManagerDecision(assessment.id, decision, comment || undefined);
-      onDecisionRecorded();
-    } catch (err) {
-      setError(friendlyError(err, "The decision couldn't be recorded. Your comments are still here — please try again."));
-      setReadinessKey((k) => k + 1);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function runCommitteeDecision(decision: CommitteeDecisionOption) {
-    if (!rationale.trim()) {
-      setRationaleMissing(true);
-      setError("A decision rationale is required.");
-      return;
-    }
-    setRationaleMissing(false);
-
-    const validConditions = structuredConditions.filter(
-      (c) => c.description.trim() && c.owner.trim() && c.due_date
-    );
-
-    if (decision === "approve_with_conditions" && validConditions.length === 0) {
-      setError(
-        "At least one condition, with a description, owner, and due date, is required when approving with conditions."
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-    try {
-      await submitCommitteeDecision(
-        assessment.id,
-        decision,
-        rationale,
-        decision === "approve_with_conditions" ? validConditions : undefined
-      );
-      onDecisionRecorded();
-    } catch (err) {
-      setError(friendlyError(err, "The decision couldn't be recorded. Your comments are still here — please try again."));
-      setReadinessKey((k) => k + 1);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   return (
     <div className="assessment-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -302,7 +141,7 @@ function ApprovalRow({
         </div>
       </div>
 
-      {delegation && (
+      {delegation && isManager && (
         <p
           style={{
             margin: 0,
@@ -321,196 +160,21 @@ function ApprovalRow({
       )}
 
       {isManager ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {/* R11: approval to committee needs the mandatory challenge sign-off. */}
-          <ChallengeSignoffPanel
-            assessmentId={assessment.id}
-            onChanged={() => {
-              setError(null);
-              setReadinessKey((k) => k + 1);
-            }}
-          />
-          {/* P3: the server's readiness result for committee submission. */}
-          <CommitteeReadinessPanel assessmentId={assessment.id} refreshKey={readinessKey} />
-          <textarea
-            aria-label="Manager comment (required to return or reject)"
-            placeholder="Comment (required to return or reject)"
-            value={comment}
-            onChange={(event) => setComment(event.target.value)}
-            rows={2}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="primary-button" disabled={submitting} onClick={() => runManagerDecision("approve")}>
-              Approve
-            </button>
-            <button disabled={submitting} onClick={() => runManagerDecision("return")}>
-              Return for Correction
-            </button>
-            <button disabled={submitting} onClick={() => runManagerDecision("reject")}>
-              Reject
-            </button>
-          </div>
+        // The decision itself is made on the assessment's "Submitted to Manager"
+        // stage, beside the findings; this page is the pending-tasks list.
+        <div>
+          <button className="primary-button" onClick={onOpen}>
+            Review &amp; Decide
+          </button>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button
-            type="button"
-            className="doc-action-button"
-            style={{ alignSelf: "flex-start" }}
-            onClick={toggleDecisionPackage}
-          >
-            {showPackage ? "Hide Decision Package" : "View Decision Package (R12.2)"}
-          </button>
-
-          {showPackage && (
-            <div style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: 12 }}>
-              {packageLoading ? (
-                <p role="status">Loading decision package...</p>
-              ) : decisionPackage ? (
-                <DecisionPackageView pkg={decisionPackage} />
-              ) : (
-                <p role="alert">The decision package couldn't be loaded. Close and reopen it to try again.</p>
-              )}
-            </div>
-          )}
-
-          {/* P3: what still blocks the final decision, from the server. */}
-          <CommitteeReadinessPanel assessmentId={assessment.id} purpose="FINAL_DECISION" refreshKey={readinessKey} />
-
-          <div style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: 12 }}>
-            <h4 style={{ margin: "0 0 8px" }}>Cast Your Vote (R12.6)</h4>
-            <VoteHistoryList votes={votes} />
-            {seatVote && (
-              <>
-                <p style={{ margin: "0 0 6px", fontSize: 13 }}>
-                  This seat has voted <strong>{seatVote.vote}</strong>. A new vote replaces it as current; the earlier
-                  vote stays on record.
-                </p>
-                <textarea
-                  aria-label="Reason for changing the vote (required)"
-                  aria-required="true"
-                  aria-invalid={recastReasonMissing || undefined}
-                  placeholder="Reason for changing the vote (required)"
-                  value={recastReason}
-                  onChange={(event) => {
-                    setRecastReason(event.target.value);
-                    if (event.target.value.trim()) setRecastReasonMissing(false);
-                  }}
-                  rows={1}
-                />
-              </>
-            )}
-            <textarea
-              aria-label="Optional comment for your vote"
-              placeholder="Optional comment for your vote"
-              value={voteComment}
-              onChange={(event) => setVoteComment(event.target.value)}
-              rows={1}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <button disabled={votingLoading} onClick={() => runCastVote("APPROVE")}>
-                Approve
-              </button>
-              <button disabled={votingLoading} onClick={() => runCastVote("DISSENT")}>
-                Dissent
-              </button>
-              <button disabled={votingLoading} onClick={() => runCastVote("ABSTAIN")}>
-                Abstain
-              </button>
-            </div>
-          </div>
-
-          <textarea
-            aria-label="Decision rationale (required)"
-            aria-required="true"
-            aria-invalid={rationaleMissing || undefined}
-            aria-describedby={rationaleMissing ? `rationale-error-${assessment.id}` : undefined}
-            placeholder="Decision rationale (required)"
-            value={rationale}
-            onChange={(event) => {
-              setRationale(event.target.value);
-              if (event.target.value.trim()) setRationaleMissing(false);
-            }}
-            rows={2}
-          />
-          {rationaleMissing && (
-            <span id={`rationale-error-${assessment.id}`} className="field-error">
-              <span aria-hidden="true">⚠</span> Enter a decision rationale before recording the decision.
-            </span>
-          )}
-
-          <div style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: 12 }}>
-            <h4 style={{ margin: "0 0 8px" }}>
-              Conditions (required only for Approve with Conditions)
-            </h4>
-            {structuredConditions.map((condition, index) => (
-              <div
-                key={index}
-                style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6 }}
-              >
-                <input
-                  aria-label={`Condition ${index + 1} description`}
-                  placeholder="Condition description"
-                  value={condition.description}
-                  onChange={(event) => updateCondition(index, "description", event.target.value)}
-                  style={{ flex: 2, minWidth: 160 }}
-                />
-                <input
-                  aria-label={`Condition ${index + 1} owner`}
-                  placeholder="Owner"
-                  value={condition.owner}
-                  onChange={(event) => updateCondition(index, "owner", event.target.value)}
-                  style={{ flex: 1, minWidth: 100 }}
-                />
-                <input
-                  type="date"
-                  aria-label={`Condition ${index + 1} due date`}
-                  value={condition.due_date}
-                  onChange={(event) => updateCondition(index, "due_date", event.target.value)}
-                />
-                <select
-                  aria-label={`Condition ${index + 1} priority`}
-                  value={condition.priority}
-                  onChange={(event) => updateCondition(index, "priority", event.target.value)}
-                >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                setStructuredConditions((current) => [
-                  ...current,
-                  { description: "", owner: "", due_date: "", priority: "MEDIUM" },
-                ])
-              }
-            >
-              + Add Condition
-            </button>
-          </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="primary-button" disabled={submitting} onClick={() => runCommitteeDecision("approve")}>
-              Approve
-            </button>
-            <button disabled={submitting} onClick={() => runCommitteeDecision("approve_with_conditions")}>
-              Approve with Conditions
-            </button>
-            <button disabled={submitting} onClick={() => runCommitteeDecision("defer")}>
-              Defer
-            </button>
-            <button disabled={submitting} onClick={() => runCommitteeDecision("reject")}>
-              Reject (reason required)
-            </button>
-          </div>
-        </div>
+        <CommitteeDecisionPanel
+          assessment={assessment}
+          user={user}
+          delegation={delegation}
+          onDecisionRecorded={onDecisionRecorded}
+        />
       )}
-
-      {error && <p role="alert" style={{ color: "#b91c1c", margin: 0 }}>{error}</p>}
     </div>
   );
 }

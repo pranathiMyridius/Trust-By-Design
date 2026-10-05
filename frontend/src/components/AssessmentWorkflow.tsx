@@ -53,6 +53,7 @@ import {
   getControlSummary,
   addControl,
   assessControl,
+  listEvidenceLinks,
   updateControlCondition,
   CONTROL_LIBRARY,
   DESIGN_ADEQUACY_VALUES,
@@ -92,8 +93,14 @@ import {
 } from "../api/processing";
 import StageMoveModal from "./StageMoveModal";
 import StageTracker from "./StageTracker";
+import {
+  DECIDED_STATUSES,
+  MANAGER_PHASE_STATUSES,
+  STAGE_STEPS,
+  TRACKED_STAGES,
+  stageIndexForStep,
+} from "./stageTrackerStages";
 import WorkflowPanel from "./WorkflowPanel";
-import ManualScoringCalculator from "./ManualScoringCalculator";
 import { RiskLevelIcon } from "./RiskLevelBadge";
 import SectionNavigator from "./SectionNavigator";
 import ProcessingStatus, { DocumentProcessingBadge } from "./ProcessingStatus";
@@ -116,6 +123,12 @@ import {
 import { formatResidualScore, useResidualRisk } from "./governanceHooks";
 import { friendlyError } from "../utils/errorMessages";
 import RetentionHoldPanel from "./RetentionHoldPanel";
+import ManagerDecisionPanel from "./ManagerDecisionPanel";
+import ApprovalStage from "./ApprovalStage";
+import ControlEvidencePanel from "./ControlEvidencePanel";
+import AIChallengePanel from "./AIChallengePanel";
+import RatingsPanel from "./RatingsPanel";
+import ReturnedByManagerPanel, { ManagerFeedbackBanner } from "./ReturnedByManagerPanel";
 import {
   ExpiredEvidenceDecision,
   FactorIndicatorEditor,
@@ -145,16 +158,12 @@ interface AssessmentWorkflowProps {
   onEditDraft?: (assessment: Assessment) => void;
 }
 
-const workflowSteps = [
-  "Intake",
-  "Evidence",
-  "Inherent Risk",
-  "Controls",
-  "Residual Risk",
-  "FCRM Review",
-  "Challenge",
-  "Decision",
-];
+// The pipeline still has 7 internal steps (one per status gate); the tracker
+// groups them into TRACKED_STAGES, and these are the names the page shows.
+const TOTAL_STEPS = 7;
+function stepLabel(step: number): string {
+  return TRACKED_STAGES[stageIndexForStep(step)]?.label ?? "";
+}
 // Stage 7: a control's current assessment (if any) collapses to one of
 // these display statuses, driven by real per-control data from
 // getControlSummary() instead of a hardcoded per-dimension guess.
@@ -348,7 +357,8 @@ function getRiskLevel(score: number) {
     return "HIGH";
   }
 
-  if (score >= 30) {
+  // Default methodology bands: LOW 0-39, MEDIUM 40-59, HIGH 60-79, CRITICAL 80+.
+  if (score >= 40) {
     return "MEDIUM";
   }
 
@@ -390,7 +400,7 @@ function readSavedStep(assessmentId: number): number | null {
     if (
       !Number.isNaN(parsed) &&
       parsed >= 1 &&
-      parsed <= workflowSteps.length
+      parsed <= TOTAL_STEPS
     ) {
       return parsed;
     }
@@ -445,20 +455,19 @@ function inferStepFromStatus(status: string): number {
     case "INFORMATION_REQUESTED":
       return 6;
     // AW approval workflow (replaces the old COMMITTEE_DECISION step):
-    // still in progress through the Manager/Committee chain.
+    // still in progress through the Manager/Committee chain, and the final
+    // decisions: the same screen, with the committee stage decided.
     case "SUBMITTED_TO_MANAGER":
     case "RETURNED_BY_MANAGER":
     case "READY_FOR_COMMITTEE":
     case "COMMITTEE_REVIEW":
     case "DEFERRED":
-      return 7;
-    // Final decisions.
     case "MANAGER_REJECTED":
     case "APPROVED":
     case "APPROVED_WITH_CONDITIONS":
     case "REJECTED":
     case "CLOSED":
-      return 8;
+      return 7;
     case "REMEDIATION":
       // Sent back for rework — the business owner returns to Intake.
       return 1;
@@ -786,7 +795,7 @@ function ApprovalStatusStage({
         </button>
       </div>
 
-      {/* P6: reassessment & change management moved to ReassessmentPanel (every stage). */}
+      {/* P6: reassessment & change management moved to ReassessmentPanel (Decision step, and a reassessment's Intake). */}
 
       <div style={{ marginTop: 24 }}>
         <AuditCompliancePanel
@@ -1134,7 +1143,11 @@ if (assessment !== lastAssessmentProp) {
 
       if (final.status === "SUCCEEDED" || final.status === "PARTIAL") {
         await showAdvancedStage(await getAssessment(assessmentState.id));
-        window.setTimeout(() => setStageDialogOpen(false), STAGE_DIALOG_LINGER_MS);
+        // Risk Identification ends on the AI prediction, which stays open
+        // until the user dismisses it; other moves close themselves.
+        if ((job.from_status ?? assessmentState.status) !== "EVIDENCE_COLLECTION") {
+          window.setTimeout(() => setStageDialogOpen(false), STAGE_DIALOG_LINGER_MS);
+        }
       } else if (final.refused) {
         setStageDialogOpen(false);
         const error = new Error(final.error_message ?? "This stage move was refused.");
@@ -1797,38 +1810,19 @@ if (assessment !== lastAssessmentProp) {
     }
   }
 
-  // Map stage index to workflow step for navigation
-  function stageIndexToWorkflowStep(stageIndex: number): number {
-    // TRACKED_STAGES indices map to workflow step as follows:
-    // 0: INTAKE -> step 1
-    // 1: EVIDENCE_COLLECTION -> step 2
-    // 2: RISK_IDENTIFICATION -> step 3
-    // 3: CONTROL_ASSESSMENT -> step 4
-    // 4: RESIDUAL_RISK -> step 5
-    // 5: HUMAN_REVIEW -> step 6
-    // 6+: approval workflow -> step 7
-    const stageToStepMap: Record<number, number> = {
-      0: 1, // INTAKE
-      1: 2, // EVIDENCE_COLLECTION
-      2: 3, // RISK_IDENTIFICATION (also covers INHERENT_RISK_ASSESSMENT)
-      3: 4, // CONTROL_ASSESSMENT
-      4: 5, // RESIDUAL_RISK
-      5: 6, // HUMAN_REVIEW
-      6: 7, // SUBMITTED_TO_MANAGER
-      7: 7, // READY_FOR_COMMITTEE
-      8: 7, // DECISION
-    };
-    return stageToStepMap[stageIndex] ?? currentStep;
+  function handleStageTrackerClick(stageIndex: number, stageKey: string) {
+    const steps = STAGE_STEPS[stageKey] ?? STAGE_STEPS[TRACKED_STAGES[stageIndex]?.key ?? ""] ?? [];
+    if (steps.length === 0 || steps[0] > maxStepReached) return;
+    // A node that covers two steps shows both on one screen; land on the
+    // furthest one reached so nothing is hidden.
+    const newStep = Math.min(steps[steps.length - 1], maxStepReached);
+    setCurrentStep(newStep);
+    // Scroll to top of the content panel
+    stepPanelRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
-  function handleStageTrackerClick(stageIndex: number) {
-    const newStep = stageIndexToWorkflowStep(stageIndex);
-    if (newStep <= maxStepReached) {
-      setCurrentStep(newStep);
-      // Scroll to top of the content panel
-      stepPanelRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }
+  // Retention and reassessment follow the final decision, on the Approval screen.
+  const isDecided = currentStep === 7 && DECIDED_STATUSES.includes(assessmentState.status);
 
   return (
     <div className="assessment-workflow">
@@ -1842,6 +1836,7 @@ if (assessment !== lastAssessmentProp) {
           fromStatus={stageMoveFrom}
           job={stageJob}
           documentCount={documents.length}
+          riskResults={riskResults}
           retrying={stageRetrying}
           onRetry={handleRetryStageMove}
           onClose={() => setStageDialogOpen(false)}
@@ -1915,26 +1910,29 @@ if (assessment !== lastAssessmentProp) {
         containerRef={stepPanelRef}
         title={assessmentState.title}
         referenceId={assessmentState.reference_id ?? `ASSESSMENT-${assessmentState.id}`}
-        stageLabel={`${workflowSteps[currentStep - 1] ?? ""} (step ${currentStep} of ${workflowSteps.length}) · ${
+        stageLabel={`${stepLabel(currentStep)} (step ${stageIndexForStep(currentStep) + 1} of ${TRACKED_STAGES.length}) · ${
           assessmentState.workflow_status_label ?? assessmentState.status
         }`}
         storageKey={`assessment-${assessmentState.id}-step-${currentStep}`}
         ready={!loading}
       />
 
-      {/* 9-node pipeline tracker — the real, server-driven source of
+      {/* 7-node pipeline tracker — the real, server-driven source of
           truth for where this assessment stands. Business Request ->
           Intake -> Evidence Collection -> Risk Identification ->
           Control Assessment -> Residual Risk -> Human Review ->
-          Submitted to Manager -> Ready for Committee -> Decision. */}
+          Approval (manager review + committee decision). */}
 
       <section className="workflow-card">
         <StageTracker
           status={assessmentState.status}
+          role={user.role}
           onStageClick={handleStageTrackerClick}
           disableNavigation={false}
         />
       </section>
+
+      <ManagerFeedbackBanner assessment={assessmentState} />
 
       {/* Stage 14: lifecycle status, owner / next action, SLA, escalation,
           permitted next statuses and workflow history. */}
@@ -1975,7 +1973,8 @@ if (assessment !== lastAssessmentProp) {
           Loading assessment information...
         </div>
 
-      ) : currentStep === 1 ? (
+      ) : currentStep === 1 || currentStep === 2 ? (
+<>
 
         <div className="intake-layout">
 
@@ -2509,8 +2508,10 @@ if (assessment !== lastAssessmentProp) {
             </section>
 
 
-            {/* Submitted Evidence */}
+            {/* Submitted Evidence: the short list, only until the detailed
+                "Submitted Evidence Files" list opens with evidence collection. */}
 
+            {maxStepReached < 2 && (
             <section className="workflow-card">
 
               <div className="workflow-card-header">
@@ -2620,6 +2621,7 @@ if (assessment !== lastAssessmentProp) {
               </div>
 
             </section>
+            )}
 
 
             {/* Human Review */}
@@ -2669,7 +2671,7 @@ if (assessment !== lastAssessmentProp) {
 
         </div>
 
-      ) : currentStep === 2 ? (
+{maxStepReached >= 2 ? (
 
         <div className="evidence-layout">
 
@@ -3343,6 +3345,10 @@ if (assessment !== lastAssessmentProp) {
 
         </div>
 
+) : (
+  <p className="step-locked">Evidence collection opens once intake is complete.</p>
+)}
+</>
       ) :  currentStep === 3 ? (
   <div className="risk-layout">
 
@@ -3688,6 +3694,17 @@ if (assessment !== lastAssessmentProp) {
             {suggestNotice}
           </p>
         )}
+
+        {/* Rate every factor and save once; also shows the indicative score. */}
+        <RatingsPanel
+          assessmentId={assessmentState.id}
+          factors={riskFactors}
+          categoryLabel={(category) =>
+            RISK_CATEGORIES.find((option) => option.value === category)?.label ?? category
+          }
+          canEdit={canRunPipeline}
+          onSaved={refreshRiskFactors}
+        />
 
         {riskFactors.length === 0 ? (
           <div className="risk-empty">
@@ -4269,18 +4286,6 @@ if (assessment !== lastAssessmentProp) {
         </section>
       )}
 
-      <ManualScoringCalculator
-        key={assessmentState.id}
-        riskResults={riskResults}
-        overallScore={assessmentState.overall_score}
-        riskLevel={assessmentState.risk_level}
-        assessmentId={assessmentState.id}
-        assessmentStatus={assessmentState.status}
-        savedDraft={assessmentState.manual_score_draft}
-        onScoreOverridden={(updated) => setAssessmentState(updated)}
-        canApplyOverride={canRunPipeline}
-      />
-
     </div>
 
 
@@ -4402,7 +4407,8 @@ if (assessment !== lastAssessmentProp) {
     </aside>
 
   </div>
-) : currentStep === 4 ? (
+) : currentStep === 4 || currentStep === 5 ? (
+<>
   <ControlsStage
     assessment={assessmentState}
     riskFactors={riskFactors}
@@ -4413,7 +4419,7 @@ if (assessment !== lastAssessmentProp) {
     advanceError={advanceError}
     canRunPipeline={canRunPipeline}
   />
-) : currentStep === 5 ? (
+{maxStepReached >= 5 ? (
   <ResidualRiskStage
     assessment={assessmentState}
     riskFactors={riskFactors}
@@ -4423,6 +4429,10 @@ if (assessment !== lastAssessmentProp) {
     advanceError={advanceError}
     canRunPipeline={canRunPipeline}
   />
+) : (
+  <p className="step-locked">Residual risk opens once the control assessment is complete.</p>
+)}
+</>
 ) : currentStep === 6 ? (
   <>
   <AssessmentDraftPanel
@@ -4448,14 +4458,60 @@ if (assessment !== lastAssessmentProp) {
   />
   </>
 ) : currentStep === 7 ? (
-  <ChallengeReviewStage
-    assessmentId={assessmentState.id}
-    canEdit={canRunPipeline}
-    // G-4: accepting (MEDIUM only) is a documented Committee exception;
-    // the server checks the member's eligibility and the case's stage.
-    canAccept={user.role === "COMMITTEE_MEMBER"}
+  <ApprovalStage
+    assessment={assessmentState}
+    user={user}
+    onDecisionRecorded={() => {
+      getAssessment(assessmentState.id)
+        .then((updated) => {
+          setAssessmentState(updated);
+          getAssessmentAudit(updated.id).then(setAuditEvents).catch(console.error);
+        })
+        .catch(console.error);
+    }}
+    managerContent={
+      <>
+  {/* The manager returned it: the owner reads the feedback and resubmits. */}
+  <ReturnedByManagerPanel
+    assessment={assessmentState}
+    user={user}
+    onResubmit={handleSubmitForCommitteeReview}
+    onEditRequest={onEditDraft ? () => onEditDraft(assessmentState) : undefined}
+    submitting={submitReviewLoading}
+    error={submitReviewError}
   />
-) : currentStep === 8 ? (
+  {/* The assigned manager (or a delegate) decides here, next to the findings. */}
+  <ManagerDecisionPanel
+    assessment={assessmentState}
+    user={user}
+    onDecisionRecorded={() => {
+      getAssessment(assessmentState.id)
+        .then((updated) => {
+          setAssessmentState(updated);
+          getAssessmentAudit(updated.id).then(setAuditEvents).catch(console.error);
+        })
+        .catch(console.error);
+    }}
+    afterChecklist={
+      <details
+        className="apv-details"
+        key={MANAGER_PHASE_STATUSES.includes(assessmentState.status) ? "open" : "closed"}
+        open={MANAGER_PHASE_STATUSES.includes(assessmentState.status)}
+      >
+        <summary>Challenge review findings</summary>
+        <ChallengeReviewStage
+          assessmentId={assessmentState.id}
+          canEdit={canRunPipeline}
+          // G-4: accepting (MEDIUM only) is a documented Committee exception;
+          // the server checks the member's eligibility and the case's stage.
+          canAccept={user.role === "COMMITTEE_MEMBER"}
+        />
+      </details>
+    }
+  />
+      </>
+    }
+    statusContent={
   <ApprovalStatusStage
     assessment={assessmentState}
     auditEvents={auditEvents}
@@ -4467,10 +4523,12 @@ if (assessment !== lastAssessmentProp) {
       getAssessmentAudit(updated.id).then(setAuditEvents).catch(console.error);
     }}
   />
+    }
+  />
 ) :  (
   <div className="workflow-placeholder">
     <h2>
-      {workflowSteps[currentStep - 1]}
+      {stepLabel(currentStep)}
     </h2>
 
     <p>
@@ -4478,10 +4536,13 @@ if (assessment !== lastAssessmentProp) {
     </p>
   </div>
 )}
-        {/* P5: a legal hold can be placed at any stage. */}
-        <RetentionHoldPanel assessmentId={assessmentState.id} />
-        {/* P6 (Stage 18): reassessment status, triggers, proposals and comparison, at every stage. */}
-        <ReassessmentPanel assessmentId={assessmentState.id} />
+        {/* P5: retention runs from the final decision, so it sits on the Decision step. */}
+        {isDecided && <RetentionHoldPanel assessmentId={assessmentState.id} />}
+        {/* P6 (Stage 18): a reassessment is proposed once an assessment is decided (Decision step),
+            and a reassessment's own Intake shows its carried-over fields and the comparison with its parent. */}
+        {(isDecided || (currentStep <= 2 && assessmentState.parent_assessment_id != null)) && (
+          <ReassessmentPanel assessmentId={assessmentState.id} />
+        )}
       </div>
 
     </div>
@@ -4750,6 +4811,29 @@ function ControlsStage({
   const residualCalc = residualState.residual;
   const residualRisk = residualCalc?.residual_score ?? null;
 
+  // The AI's view of each control's effectiveness, taken from evidence the
+  // analyst has accepted. Used only to pre-fill the "Assess control" form;
+  // the analyst still confirms the rating, so nothing scores without them.
+  const [aiEffectiveness, setAiEffectiveness] = useState<Record<number, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    listEvidenceLinks(assessment.id)
+      .then((links) => {
+        if (cancelled) return;
+        const next: Record<number, string> = {};
+        links.forEach((link) => {
+          if (link.status === "ACCEPTED" && link.suggested_effectiveness) {
+            next[link.control_id] = link.suggested_effectiveness;
+          }
+        });
+        setAiEffectiveness(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [assessment.id, controlSummary]);
+
   const applicableRiskFactors = riskFactors.filter(
     (factor) => factor.applicable && !factor.excluded
   );
@@ -4784,6 +4868,15 @@ function ControlsStage({
     );
     statusCounts[status] += 1;
   });
+
+  const totalControls = controlSummary?.controls.length ?? 0;
+  const controlsNotCredited =
+    statusCounts.UNVERIFIED + statusCounts.NOT_ASSESSED + statusCounts.INEFFECTIVE;
+  // The residual grid's weakest-risk control rating when it has loaded;
+  // otherwise "no mapped control earns any credit".
+  const controlsRatedWeak = residualCalc
+    ? residualCalc.control_rating === "WEAK"
+    : totalControls > 0 && controlsNotCredited === totalControls;
 
   const openConditions = (controlSummary?.conditions ?? []).filter(
     (condition) => condition.status !== "COMPLETED" && condition.status !== "CANCELLED"
@@ -4834,6 +4927,13 @@ function ControlsStage({
 
     if (!comment.trim()) {
       setOutcomeError("Commentary is required to record a control assessment outcome.");
+      return;
+    }
+
+    if (outcome === "ACCEPTED" && controlsRatedWeak) {
+      setOutcomeError(
+        "Controls can't be accepted as adequate while the control rating is Weak. Rate the controls first, or choose Remediation required or Escalate."
+      );
       return;
     }
 
@@ -4910,6 +5010,8 @@ function ControlsStage({
                   canEdit={canRunPipeline}
                   onChanged={onControlsChanged}
                   mappableFactors={applicableRiskFactors}
+                  allControls={controlSummary?.controls ?? []}
+                  aiEffectiveness={aiEffectiveness}
                 />
               ))}
 
@@ -4918,6 +5020,20 @@ function ControlsStage({
           )}
 
         </section>
+
+        <ControlEvidencePanel
+          assessmentId={assessment.id}
+          controls={(controlSummary?.controls ?? []).map((control) => {
+            const riskFactor = riskFactors.find((factor) => factor.id === control.risk_factor_id);
+            return {
+              id: control.id,
+              label: controlTypeLabel(control.control_type),
+              riskLabel: riskFactor ? riskCategoryLabel(riskFactor.category) : undefined,
+            };
+          })}
+          canEdit={canRunPipeline}
+          onChanged={onControlsChanged}
+        />
 
         <section className="workflow-card" style={{ marginTop: 16 }}>
           <div className="workflow-card-header">
@@ -4948,6 +5064,13 @@ function ControlsStage({
               </option>
               <option value="ESCALATE">Escalate for further review</option>
             </select>
+
+            {outcome === "ACCEPTED" && controlsRatedWeak && (
+              <p role="status" style={{ margin: 0, fontSize: 13, color: "#b45309" }}>
+                The control rating is Weak, so “controls are adequate” can't be recorded yet. Rate the controls above,
+                or choose Remediation required.
+              </p>
+            )}
 
             <textarea aria-label="Commentary supporting this control assessment outcome"
               placeholder="Commentary supporting this control assessment outcome..."
@@ -5097,7 +5220,7 @@ function ControlsStage({
               </span>
 
               <strong className="reduction-value">
-                -{controlReduction.toFixed(1)}
+                {controlReduction > 0 ? "-" : ""}{controlReduction.toFixed(1)}
               </strong>
 
             </div>
@@ -5143,6 +5266,16 @@ function ControlsStage({
             {(controlSummary?.gaps.length ?? 0)} open control gap
             {(controlSummary?.gaps.length ?? 0) === 1 ? "" : "s"}
           </h3>
+
+          {controlsNotCredited > 0 && (
+            <p>
+              <strong>
+                {controlsNotCredited} of {totalControls} mapped controls
+              </strong>{" "}
+              are unverified, not assessed or ineffective, so they currently
+              reduce no risk. Use “Assess control” to rate them.
+            </p>
+          )}
 
           <p>
             Risks with no mapped control, unverified/ineffective controls,
@@ -5205,21 +5338,11 @@ function ControlsStage({
 
             <div>
               <span>
-                Control reduction
+                Controls not yet credited
               </span>
 
               <strong>
-                {controlReduction.toFixed(1)}
-              </strong>
-            </div>
-
-            <div>
-              <span>
-                Residual risk
-              </span>
-
-              <strong>
-                {formatResidualScore(residualRisk)}
+                {controlsNotCredited} of {totalControls}
               </strong>
             </div>
 
@@ -5267,6 +5390,10 @@ interface RiskFactorControlGroupProps {
   onChanged: () => Promise<void>;
   // R7.2: the risks a control can be remapped to.
   mappableFactors: { id: number; category: string }[];
+  // Every control on the assessment, so a rating can be applied to the same
+  // control type wherever it is mapped.
+  allControls: Control[];
+  aiEffectiveness: Record<number, string>;
 }
 
 // Stage 7 (R7.1-R7.6): one identified risk, its mapped controls (each
@@ -5281,6 +5408,8 @@ function RiskFactorControlGroup({
   canEdit,
   onChanged,
   mappableFactors,
+  allControls,
+  aiEffectiveness,
 }: RiskFactorControlGroupProps) {
   const [addingControl, setAddingControl] = useState(false);
   const [controlType, setControlType] = useState(CONTROL_LIBRARY[0].value);
@@ -5341,6 +5470,13 @@ function RiskFactorControlGroup({
         </p>
       </div>
 
+      {riskFactor.category === "CONTROL_ENVIRONMENT_RISK" && (
+        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#667085" }}>
+          The control environment is what the other controls are measured against. These controls are recorded
+          here but are not scored as a separate risk in the residual calculation.
+        </p>
+      )}
+
       {gaps.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
           {gaps.map((gap) => (
@@ -5362,6 +5498,10 @@ function RiskFactorControlGroup({
               canEdit={canEdit}
               onChanged={onChanged}
               mappableFactors={mappableFactors}
+              siblings={allControls
+                .filter((other) => other.control_type === control.control_type && other.id !== control.id)
+                .map((other) => ({ control: other, current: controlAssessments[other.id] }))}
+              aiEffectiveness={aiEffectiveness[control.id]}
             />
           ))}
         </div>
@@ -5450,6 +5590,10 @@ interface ControlRowProps {
   canEdit: boolean;
   onChanged: () => Promise<void>;
   mappableFactors: { id: number; category: string }[];
+  // The same control type mapped to other risks, with each one's current
+  // assessment, and the AI's accepted-evidence view of this control.
+  siblings: { control: Control; current: ControlAssessmentRecord | undefined }[];
+  aiEffectiveness?: string;
 }
 
 // One mapped control: its metadata, current status badge, and an inline
@@ -5461,8 +5605,12 @@ function ControlRow({
   canEdit,
   onChanged,
   mappableFactors,
+  siblings,
+  aiEffectiveness,
 }: ControlRowProps) {
   const [assessing, setAssessing] = useState(false);
+  const [applyToAll, setApplyToAll] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
   const [designAdequacy, setDesignAdequacy] = useState(
     currentAssessment?.design_adequacy ?? "NOT_ASSESSED"
   );
@@ -5503,6 +5651,25 @@ function ControlRow({
         coverage_complete: coverageComplete,
         depends_on_unavailable_data: dependsOnUnavailableData,
       });
+
+      // The same control is usually mapped to several risks. Apply the same
+      // rating to those mappings, but keep each one's own evidence status:
+      // a mapping without accepted evidence can't be rated Effective.
+      if (applyToAll) {
+        for (const sibling of siblings) {
+          const siblingHasEvidence = sibling.current?.has_evidence ?? false;
+          await assessControl(assessmentId, sibling.control.id, {
+            design_adequacy: designAdequacy,
+            operating_effectiveness:
+              effectiveness === "EFFECTIVE" && !siblingHasEvidence
+                ? "PARTIALLY_EFFECTIVE"
+                : effectiveness,
+            has_evidence: siblingHasEvidence,
+            coverage_complete: coverageComplete,
+            depends_on_unavailable_data: dependsOnUnavailableData,
+          });
+        }
+      }
       setAssessing(false);
       await onChanged();
     } catch (err) {
@@ -5540,10 +5707,34 @@ function ControlRow({
         </span>
       </div>
 
+      {currentAssessment?.effectiveness_rationale?.startsWith("AI-suggested") && (
+        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#667085" }}>
+          AI-suggested rating from the evidence you accepted — confirm or change it under “Assess control”.
+        </p>
+      )}
+      {!currentAssessment?.effectiveness_rationale?.startsWith("AI-suggested") &&
+        currentAssessment?.design_rationale?.startsWith("AI-suggested design review") && (
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#667085" }}>
+            AI-suggested design review: {currentAssessment.design_adequacy.replace(/_/g, " ").toLowerCase()}. Confirm
+            or change it under “Assess control”.
+          </p>
+        )}
+
       {canEdit && (
         <div style={{ marginTop: 6 }}>
           {!assessing ? (
-            <button className="secondary-button" onClick={() => setAssessing(true)}>
+            <button
+              className="secondary-button"
+              onClick={() => {
+                // Pre-fill from the AI's view of the accepted evidence, but
+                // only when no rating has been recorded yet.
+                if (effectiveness === "UNVERIFIED" && aiEffectiveness && aiEffectiveness !== "UNVERIFIED") {
+                  setEffectiveness(aiEffectiveness);
+                  setPrefilled(true);
+                }
+                setAssessing(true);
+              }}
+            >
               Assess control
             </button>
           ) : (
@@ -5576,6 +5767,12 @@ function ControlRow({
                 </select>
               </label>
 
+              {prefilled && (
+                <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>
+                  Effectiveness pre-filled from the AI's reading of the evidence you accepted. Confirm or change it.
+                </p>
+              )}
+
               <label>
                 <input
                   type="checkbox"
@@ -5602,6 +5799,18 @@ function ControlRow({
                 />{" "}
                 Depends on currently unavailable data
               </label>
+
+              {siblings.length > 0 && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={applyToAll}
+                    onChange={(e) => setApplyToAll(e.target.checked)}
+                  />{" "}
+                  Also apply this rating to the {siblings.length} other risk{siblings.length === 1 ? "" : "s"} this
+                  control is mapped to (evidence status stays per mapping)
+                </label>
+              )}
 
               {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
 
@@ -5723,6 +5932,31 @@ function ResidualRiskStage({
       factor.category !== "CONTROL_ENVIRONMENT_RISK"
   );
 
+  // Bands come from the methodology in force, so a score gets the same label
+  // here as on the inherent-risk and approval screens. getRiskLevel() is only
+  // the fallback while they load.
+  const [methodologyBands, setMethodologyBands] = useState<
+    { name: string; min: number; max: number }[]
+  >([]);
+  useEffect(() => {
+    let cancelled = false;
+    getInherentRiskCalculation(assessment.id)
+      .then((calculation) => {
+        if (!cancelled) setMethodologyBands(calculation.risk_bands ?? []);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [assessment.id]);
+
+  function bandForScore(score: number): string {
+    const match = [...methodologyBands]
+      .sort((a, b) => b.min - a.min)
+      .find((band) => score >= band.min);
+    return match ? match.name.toUpperCase() : getRiskLevel(score);
+  }
+
   // The backend's residual-grid result (inherent band x control rating,
   // held up by any non-mitigable rule), not a client-side subtraction.
   const residualState = useResidualRisk(assessment.id, controlSummary);
@@ -5834,7 +6068,7 @@ function ResidualRiskStage({
               </span>
 
               <strong>
-                -{controlReduction.toFixed(1)}
+                {controlReduction > 0 ? "-" : ""}{controlReduction.toFixed(1)}
               </strong>
 
               <small>
@@ -5909,7 +6143,9 @@ function ResidualRiskStage({
                     PARTIALLY_EFFECTIVE: 2,
                     INEFFECTIVE: 0,
                     UNVERIFIED: 0,
-                    NOT_ASSESSED: 0,
+                    // Below the others, so a control that exists but is
+                    // unverified is shown as Unverified, not Not Assessed.
+                    NOT_ASSESSED: -1,
                   };
                   return rank[status] > rank[best] ? status : best;
                 },
@@ -5920,7 +6156,7 @@ function ResidualRiskStage({
                 bestStatus === "EFFECTIVE" ? 4 : bestStatus === "PARTIALLY_EFFECTIVE" ? 2 : 0;
 
               const factorResidual = Math.max(factor.score - reduction, 0);
-              const factorLevel = getRiskLevel(factorResidual);
+              const factorLevel = bandForScore(factorResidual);
 
               return (
                 <div
@@ -6146,7 +6382,7 @@ function ResidualRiskStage({
               </span>
 
               <strong className="reduction-text">
-                -{controlReduction.toFixed(1)}
+                {controlReduction > 0 ? "-" : ""}{controlReduction.toFixed(1)}
               </strong>
             </div>
 
@@ -6316,6 +6552,24 @@ function AssessmentDraftPanel({
   }
 
   const uncertainty = draft.uncertainty || {};
+  const uncertaintyCount =
+    (uncertainty.low_confidence_items?.length ?? 0) +
+    (uncertainty.unsupported_conclusions?.length ?? 0) +
+    (uncertainty.conflicting_evidence?.length ?? 0) +
+    (uncertainty.unresolved_questions?.length ?? 0);
+  const controlsWithoutEvidence = draft.mapped_controls.filter((control) => !control.has_evidence).length;
+  const profileUnconfirmed = "confirmed" in (draft.business_profile ?? {}) && !draft.business_profile.confirmed;
+  const flaggedCount = draft.risk_gaps.length + draft.missing_information.length + uncertaintyCount;
+  // What a reviewer should look at first, before reading the whole report.
+  const attention: string[] = [];
+  if (profileUnconfirmed) attention.push("The business owner has not confirmed the business profile.");
+  if (draft.missing_information.length > 0) {
+    attention.push(`${draft.missing_information.length} piece(s) of information are missing.`);
+  }
+  if (draft.risk_gaps.length > 0) attention.push(`${draft.risk_gaps.length} risk gap(s) are recorded.`);
+  if (uncertaintyCount > 0) attention.push(`${uncertaintyCount} point(s) of uncertainty are flagged.`);
+  if (controlsWithoutEvidence > 0) attention.push(`${controlsWithoutEvidence} mapped control(s) have no supporting evidence.`);
+  if (!draft.accepted_by) attention.push("The draft has not been accepted yet.");
 
   return (
     <section className="risk-results-section">
@@ -6384,8 +6638,50 @@ function AssessmentDraftPanel({
         </div>
       ) : (
         <>
+          <div className="draft-facts">
+            <div>
+              <span>Inherent risk</span>
+              <strong>
+                {String(draft.inherent_risk.score ?? "—")} · {String(draft.inherent_risk.band ?? "—")}
+              </strong>
+            </div>
+            <div>
+              <span>Residual risk</span>
+              <strong>
+                {String(draft.residual_risk.score ?? "—")} · {String(draft.residual_risk.band ?? "—")}
+              </strong>
+            </div>
+            <div>
+              <span>Controls effective</span>
+              <strong>
+                {String(draft.control_effectiveness.effective_controls ?? 0)} of{" "}
+                {String(draft.control_effectiveness.total_controls ?? 0)}
+              </strong>
+            </div>
+            <div>
+              <span>Documents on file</span>
+              <strong>{draft.evidence_references.length}</strong>
+            </div>
+          </div>
+
+          <div className={`draft-attention ${attention.length === 0 ? "draft-attention-clear" : ""}`}>
+            <h3>Needs your attention</h3>
+            {attention.length === 0 ? (
+              <p>Nothing is flagged on this draft.</p>
+            ) : (
+              <ul>
+                {attention.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <h3>Executive Summary</h3>
           <p className="risk-reason">{draft.executive_summary}</p>
+
+          <details className="draft-group">
+          <summary>Business profile &amp; scope</summary>
 
           <h3>Business Change Description</h3>
           <p className="risk-reason">{draft.business_change_description}</p>
@@ -6445,6 +6741,10 @@ function AssessmentDraftPanel({
             </p>
           ))}
 
+          </details>
+
+          <details className="draft-group">
+          <summary>Risk, evidence &amp; controls</summary>
           <h3>Inherent Risk</h3>
           <p className="risk-reason">
             Score {String(draft.inherent_risk.score ?? "—")}, band {String(draft.inherent_risk.band ?? "—")}
@@ -6491,6 +6791,12 @@ function AssessmentDraftPanel({
             Score {String(draft.residual_risk.score ?? "—")}, band {String(draft.residual_risk.band ?? "—")}
           </p>
 
+          </details>
+
+          <details className="draft-group">
+          <summary>
+            Gaps, assumptions &amp; uncertainty{flaggedCount > 0 ? ` (${flaggedCount} flagged)` : ""}
+          </summary>
           {draft.risk_gaps.length > 0 && (
             <>
               <h3>Risk Gaps</h3>
@@ -6550,6 +6856,8 @@ function AssessmentDraftPanel({
               ))}
             </>
           )}
+
+          </details>
 
           <h3>Recommended Conditions</h3>
           {draft.recommended_conditions.length === 0 ? (
@@ -7281,7 +7589,7 @@ function FcrmReviewStage({
               </h2>
 
               <p>
-                Findings generated from the current control
+                Rule-based findings generated from the current control
                 mapping and risk results.
               </p>
 
@@ -7343,6 +7651,16 @@ function FcrmReviewStage({
           </div>
 
         </section>
+
+        {/* AI gap analysis: advisory findings beyond the rules above. */}
+        <AIChallengePanel
+          assessmentId={assessment.id}
+          controls={(controlSummary?.controls ?? []).map((control) => ({
+            id: control.id,
+            label: controlTypeLabel(control.control_type),
+          }))}
+          canEdit={canRunPipeline}
+        />
 
 
         {/* Stage 10 (R10.2/R10.3/R10.4): analyst value overrides */}
@@ -7680,7 +7998,7 @@ function FcrmReviewStage({
               </span>
 
               <strong className="reduction-text">
-                -{controlReduction.toFixed(1)}
+                {controlReduction > 0 ? "-" : ""}{controlReduction.toFixed(1)}
               </strong>
             </div>
 
@@ -8421,7 +8739,7 @@ interface AuditCompliancePanelProps {
 
 // Stage 16 (R16.2-R16.3): explain-the-rating and export-the-package for
 // one assessment. (P5: retention and legal holds moved to
-// RetentionHoldPanel, shown at every stage.) Self-fetches its own
+// RetentionHoldPanel, shown on the Decision step.) Self-fetches its own
 // data (same pattern as ChallengeReviewStage above) since none of it is
 // part of the data this workflow's main effect already loads.
 function AuditCompliancePanel({

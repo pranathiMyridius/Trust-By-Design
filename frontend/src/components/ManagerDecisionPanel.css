@@ -1,0 +1,33 @@
+.mdp { display: flex; flex-direction: column; gap: 14px; }
+.mdp-chip { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.mdp-chip-ok { background: #e7f5ea; color: #1b6b2f; }
+.mdp-chip-bad { background: #fdecec; color: #b42318; }
+.mdp-chip-info { background: #f1ebfa; color: #5b2a9b; }
+.mdp-delegate { margin: 0; padding: 8px 12px; border-radius: 8px; background: #eef2ff; color: #3730a3; font-size: 13px; }
+.mdp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.mdp-tile { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f8fafc; }
+.mdp-tile-label { font-size: 12px; color: #64748b; }
+.mdp-tile-value { font-size: 22px; color: #0f172a; }
+.mdp-tile-sub { font-size: 12px; color: #64748b; }
+.mdp-checklist { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.mdp-checklist-head { display: flex; justify-content: space-between; align-items: baseline; }
+.mdp-checklist-head h3 { margin: 0; font-size: 14px; }
+.mdp-progress-text { font-size: 12px; color: #64748b; }
+.mdp-progress { height: 6px; border-radius: 999px; background: #e5e7eb; overflow: hidden; }
+.mdp-progress > div { height: 100%; background: #2e7d32; transition: width 0.2s; }
+.mdp-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; background: #f8fafc; }
+.mdp-row > div { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.mdp-row span:not(.mdp-chip) { font-size: 12px; color: #64748b; }
+.mdp-label { font-size: 13px; font-weight: 600; margin-bottom: -8px; }
+.mdp-label em { font-weight: 400; color: #64748b; }
+.mdp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mdp-btn { border: 0; border-radius: 6px; padding: 9px 16px; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; }
+.mdp-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.mdp-approve { background: #2e7d32; }
+.mdp-return { background: #ef7d00; }
+.mdp-reject { background: #c62828; }
+.mdp-hint { font-size: 12px; color: #b42318; }
+.mdp-error { margin: 0; color: #b91c1c; font-size: 13px; }
+.mdp-rbac { border: 1px solid #e5e7eb; border-radius: 10px; background: #f8fafc; padding: 12px 14px; }
+.mdp-rbac h4 { margin: 0 0 6px; font-size: 12px; }
+.mdp-rbac ul { margin: 0; padding-left: 16px; font-size: 12px; color: #475569; display: flex; flex-direction: column; gap: 3px; }

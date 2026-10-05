@@ -1,0 +1,12 @@
+.apv { display: flex; flex-direction: column; gap: 18px; }
+.apv-card { border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; padding: 18px 20px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+.apv-card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.apv-card-head h2 { margin: 0; font-size: 15px; font-weight: 700; color: #0f172a; }
+.apv-state { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; padding: 3px 10px; border-radius: 4px; white-space: nowrap; }
+.apv-active { background: #f1ebfa; color: #5b2a9b; }
+.apv-done { background: #e7f5ea; color: #1b6b2f; }
+.apv-bad { background: #fdecec; color: #b42318; }
+.apv-state.apv-locked { background: #eef0f3; color: #475569; }
+p.apv-locked { margin: 0; color: #64748b; font-size: 13px; }
+.apv-body { display: flex; flex-direction: column; gap: 14px; }
+.apv-details > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #334155; }

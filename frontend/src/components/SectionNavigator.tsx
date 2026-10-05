@@ -290,8 +290,14 @@ export default function SectionNavigator({
       </div>
 
       {showBackToTop && (
-        <button type="button" className="back-to-top" onClick={backToTop}>
-          <span aria-hidden="true">↑</span> Back to top
+        <button
+          type="button"
+          className="back-to-top"
+          onClick={backToTop}
+          aria-label="Back to top"
+          title="Back to top"
+        >
+          <span aria-hidden="true">↑</span>
         </button>
       )}
     </>

@@ -5360,6 +5360,17 @@ button {
   padding: 0 4px;
 }
 
+.stage-tracker-substatus {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #5b2a9b;
+  background: #f1ebfa;
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
 .stage-tracker-connector {
   position: absolute;
   top: 14px;
@@ -5668,13 +5679,16 @@ textarea[aria-invalid="true"] {
   right: 24px;
   bottom: 24px;
   z-index: 30;
-  padding: 10px 16px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 50%;
   background: #172033;
   color: #ffffff;
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 700;
+  line-height: 1;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
   cursor: pointer;
 }
@@ -5727,6 +5741,15 @@ textarea[aria-invalid="true"] {
 .bell-panel li button strong { font-size: 13px; color: #111827; }
 .bell-panel li button span { font-size: 12px; color: #667085; text-transform: capitalize; }
 .bell-empty { margin: 0; padding: 16px 14px; font-size: 13px; color: #667085; }
+
+.workflow-card-body { padding: 18px 24px 22px; font-size: 14px; color: #334155; }
+.workflow-card-body p { margin: 0 0 8px; }
+.workflow-card-body h4 { color: #1e293b; font-size: 14px; }
+.workflow-card-body input:not([type="checkbox"]):not([type="radio"]),
+.workflow-card-body select,
+.workflow-card-body textarea { height: 36px; padding: 0 10px; border: 1px solid #d0d5dd; border-radius: 8px; font: inherit; font-size: 13px; background: #fff; }
+.workflow-card-body textarea { height: auto; padding: 8px 10px; }
+
 /* Sidebar "More" menu: the rarely used pages. */
 .rail-more { position: relative; display: flex; flex-direction: column; align-items: center; }
 .rail-more-menu {
@@ -5757,3 +5780,20 @@ textarea[aria-invalid="true"] {
 }
 .rail-more-menu button:hover { background: #f3f4f6; }
 .rail-more-menu button.active { background: #eef0f3; color: #111827; font-weight: 600; }
+
+/* Pipeline tracker: the steps the viewer's role works on. */
+.stage-tracker-yours {
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f172a;
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+/* A step that opens once the one before it is complete. */
+.step-locked { margin: 16px 0 0; padding: 12px 14px; border: 1px dashed #cbd5e1; border-radius: 10px; color: #64748b; font-size: 13px; background: #f8fafc; }

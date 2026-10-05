@@ -485,6 +485,8 @@ function AuthenticatedApp({
                 />
               </label>
 
+              <NotificationBell refreshKey={assessments} userId={user.id} onOpen={openAssessmentById} />
+
               {provisionalCount > 0 && (
                 <button
                   type="button"
@@ -544,8 +546,6 @@ function AuthenticatedApp({
               setEditingDraft(null);
             }}
           />
-              <NotificationBell refreshKey={assessments} userId={user.id} onOpen={openAssessmentById} />
-
         ) : selectedAssessment ? (
   <AssessmentWorkflow
     assessment={selectedAssessment}
