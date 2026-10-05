@@ -19,7 +19,9 @@ def _validate_email(value: str) -> str:
 
 class UserCreate(BaseModel):
     email: str
-    password: str
+    # Optional: when left out, the new user is emailed a link to choose their
+    # own password (the server then needs email switched on).
+    password: Optional[str] = None
     full_name: Optional[str] = None
     role: str
     manager_id: Optional[int] = None
@@ -42,8 +44,10 @@ class UserCreate(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def password_must_not_be_blank(cls, value: str) -> str:
-        if not value or len(value) < 8:
+    def password_must_not_be_blank(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == "":
+            return None
+        if len(value) < 8:
             raise ValueError("Password must be at least 8 characters.")
         return value
 

@@ -141,6 +141,12 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "intro": "Hello {{recipient_name}}, we received a request to reset the password for your account. The link below is valid for {{minutes}} minutes and can be used once. If you did not ask for this, ignore this email; your password stays as it is.",
         "cta": "Choose a new password",
     },
+    "WELCOME": {
+        "subject": "Your Risk Assessment Workbench account is ready",
+        "heading": "Welcome to the Risk Assessment Workbench",
+        "intro": "Hello {{recipient_name}}, {{actor}} created an account for you with the role {{role_label}}. Use the link below to choose your password and sign in. The link stays valid for {{minutes}} and can be used once. If you were not expecting this, you can ignore this email.",
+        "cta": "Set your password",
+    },
     # -- explicit assignment, worded for the role it is assigned to ----------------
     "ASSIGNED_ASSIGNED_MANAGER": {
         "subject": "Assigned to you (manager): {{title}} {{reference}}",
@@ -405,22 +411,59 @@ def _drop_on_rollback(session: Session) -> None:
 
 
 
-def send_password_reset_email(user, reset_url: str, minutes: int) -> None:
-    """Email a password-reset link (in the background; never raises).
-    Not tied to a database commit -- nothing is written when it is requested."""
+def _queue_account_email(user, template_key: str, context: dict[str, str]) -> bool:
+    """Send an account email in the background. True when it was handed off,
+    False when email is off or incomplete (logged; never raises)."""
 
     if not email_enabled():
         logger.warning(
-            "Password reset email for %s not sent: email is switched off or incomplete "
+            "%s email for %s not sent: email is switched off or incomplete "
             "(needs NOTIFY_EMAIL_ENABLED=true and SMTP_HOST, SMTP_USER, SMTP_PASSWORD).",
+            template_key,
             user.email,
         )
-        return
+        return False
     if not user.email:
-        return
-    context = {
-        "recipient_name": user.full_name or user.email.split("@")[0],
-        "app_url": reset_url,
-        "minutes": str(minutes),
-    }
-    threading.Thread(target=_deliver, args=([(user.email, "PASSWORD_RESET", context)],), daemon=True).start()
+        return False
+    threading.Thread(target=_deliver, args=([(user.email, template_key, context)],), daemon=True).start()
+    return True
+
+
+def _duration_text(minutes: int) -> str:
+    if minutes % (24 * 60) == 0:
+        days = minutes // (24 * 60)
+        return f"{days} day{'s' if days != 1 else ''}"
+    if minutes % 60 == 0 and minutes >= 120:
+        return f"{minutes // 60} hours"
+    return f"{minutes} minutes"
+
+
+def send_password_reset_email(user, reset_url: str, minutes: int) -> bool:
+    """Email a password-reset link (in the background; never raises).
+    Not tied to a database commit -- nothing is written when it is requested."""
+
+    return _queue_account_email(
+        user,
+        "PASSWORD_RESET",
+        {
+            "recipient_name": user.full_name or user.email.split("@")[0],
+            "app_url": reset_url,
+            "minutes": str(minutes),
+        },
+    )
+
+
+def send_welcome_email(user, setup_url: str, minutes: int, created_by: str) -> bool:
+    """Email a new user a link to choose their own password."""
+
+    return _queue_account_email(
+        user,
+        "WELCOME",
+        {
+            "recipient_name": user.full_name or user.email.split("@")[0],
+            "app_url": setup_url,
+            "minutes": _duration_text(minutes),
+            "actor": created_by,
+            "role_label": str(user.role).replace("_", " ").title(),
+        },
+    )

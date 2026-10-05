@@ -61,18 +61,21 @@ def decode_access_token(token: str) -> str | None:
 # changes (by this reset or any other) the token stops working. That makes
 # each link single-use without storing anything.
 RESET_TOKEN_MINUTES = int(os.getenv("PASSWORD_RESET_MINUTES", "30"))
+# A welcome ("set your password") link for a brand-new account lives longer,
+# because the person may not open the email straight away. Default: 3 days.
+WELCOME_TOKEN_MINUTES = int(os.getenv("WELCOME_LINK_MINUTES", str(3 * 24 * 60)))
 
 
 def _password_fingerprint(hashed_password: str) -> str:
     return hashlib.sha256(hashed_password.encode()).hexdigest()[:20]
 
 
-def create_reset_token(user_id: int, hashed_password: str) -> str:
+def create_reset_token(user_id: int, hashed_password: str, minutes: int | None = None) -> str:
     payload = {
         "sub": str(user_id),
         "purpose": "password-reset",
         "pwf": _password_fingerprint(hashed_password),
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_MINUTES),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=minutes or RESET_TOKEN_MINUTES),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 

@@ -88,11 +88,12 @@ export async function listUsers(): Promise<CurrentUser[]> {
 
 export async function createUser(payload: {
   email: string;
-  password: string;
+  // Optional: leave out to email the user a link to choose their own.
+  password?: string;
   full_name?: string;
   role: string;
   manager_id?: number | null;
-}): Promise<CurrentUser> {
+}): Promise<CurrentUser & { email_sent?: boolean }> {
   const response = await authFetch(`${API_BASE_URL}/api/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -132,6 +133,15 @@ export async function updateUser(
   }
 
   return response.json();
+}
+
+/** Admin: email a user a one-time link to choose a new password. */
+export async function sendResetEmail(userId: number): Promise<string> {
+  const response = await authFetch(`${API_BASE_URL}/api/users/${userId}/send-reset-email`, { method: "POST" });
+  if (!response.ok) {
+    throw new Error((await readErrorDetail(response)) || "The reset email couldn't be sent. Please try again.");
+  }
+  return (await response.json()).message;
 }
 
 export async function requestPasswordReset(email: string): Promise<string> {

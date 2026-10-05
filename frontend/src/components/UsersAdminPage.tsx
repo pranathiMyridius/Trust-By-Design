@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listUsers, createUser, updateUser, type CurrentUser } from "../api/auth";
+import { listUsers, createUser, updateUser, sendResetEmail, type CurrentUser } from "../api/auth";
 import { POLICY_PENDING_LABEL, getGovernancePolicy, setUserDesignations } from "../api/governanceRecords";
 import { friendlyError } from "../utils/errorMessages";
 import { ErrorSummary, FieldError, RequiredMarker, type SummaryItem } from "./FormFeedback";
@@ -28,6 +28,11 @@ function parseScope(text: string): string[] {
     .filter(Boolean);
 }
 
+function roleLabel(role: string): string {
+  const text = role.replace(/_/g, " ").toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function scopeSummary(user: CurrentUser): string {
   const parts = [
     user.scope_legal_entities?.length ? `Entities: ${scopeText(user.scope_legal_entities)}` : "",
@@ -43,6 +48,8 @@ export default function UsersAdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
+  // A short confirmation after creating a user (shown on the list).
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -71,15 +78,66 @@ export default function UsersAdminPage() {
 
   const managers = users.filter((user) => user.role === "MANAGER");
 
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">("");
+  const needle = search.trim().toLowerCase();
+  const visibleUsers = users.filter((user) => {
+    if (roleFilter && user.role !== roleFilter) return false;
+    if (statusFilter === "active" && !user.is_active) return false;
+    if (statusFilter === "inactive" && user.is_active) return false;
+    if (!needle) return true;
+    return `${user.full_name ?? ""} ${user.email}`.toLowerCase().includes(needle);
+  });
+  const hasFilters = Boolean(search || roleFilter || statusFilter);
+
   function managerLabel(managerId: number | null): string {
     if (managerId == null) return "—";
     const manager = users.find((user) => user.id === managerId);
     return manager ? manager.full_name ?? manager.email : `#${managerId}`;
   }
 
+  if (showCreateForm) {
+    return (
+      <div className="users-page">
+        <div className="page-header users-header">
+          <div>
+            <button type="button" className="users-back" onClick={() => setShowCreateForm(false)}>
+              <span aria-hidden="true">←</span> Back to users
+            </button>
+            <h2>New user</h2>
+            <p>Create an account. The new user is emailed a link to choose their own password.</p>
+          </div>
+        </div>
+
+        <section className="content-card users-card">
+          <header className="users-card-header">
+            <h3>Account details</h3>
+            <p>Email, name, role and reporting manager.</p>
+          </header>
+          <div className="users-card-body">
+            <CreateUserForm
+              managers={managers}
+              onCancel={() => setShowCreateForm(false)}
+              onCreated={(result) => {
+                setShowCreateForm(false);
+                setNotice(
+                  result.email_sent
+                    ? `User created. A welcome email with a link to set a password was sent to ${result.email}.`
+                    : `User created. No email was sent (email isn't set up on this server), so share the temporary password with ${result.email} yourself.`
+                );
+                load();
+              }}
+            />
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <div className="page-header">
+    <div className="users-page">
+      <div className="page-header users-header">
         <div>
           <h2>Users</h2>
           <p>Create accounts and assign roles / reporting managers.</p>
@@ -87,15 +145,24 @@ export default function UsersAdminPage() {
         <button
           type="button"
           className="primary-button"
-          aria-expanded={showCreateForm}
-          onClick={() => setShowCreateForm((v) => !v)}
+          onClick={() => {
+            setNotice(null);
+            setShowCreateForm(true);
+          }}
         >
-          {showCreateForm ? "Cancel" : "+ New User"}
+          + New User
         </button>
       </div>
 
+      {notice && (
+        <p className="users-notice" role="status">
+          <span aria-hidden="true">✓ </span>
+          {notice}
+        </p>
+      )}
+
       {error && (
-        <div className="empty-state" role="alert">
+        <div className="users-error" role="alert">
           <h3>{error}</h3>
           <button className="primary-button" onClick={load}>
             Try Again
@@ -103,44 +170,96 @@ export default function UsersAdminPage() {
         </div>
       )}
 
-      {showCreateForm && (
-        <section className="content-card">
-          <CreateUserForm
-            managers={managers}
-            onCreated={() => {
-              setShowCreateForm(false);
-              load();
-            }}
-          />
-        </section>
-      )}
-
-      <section className="content-card">
+      <section className="content-card users-card">
+        <header className="users-card-header users-card-header-row">
+          <div>
+            <h3>All users</h3>
+            <p>
+              {hasFilters ? `${visibleUsers.length} of ${users.length}` : users.length} user{users.length === 1 ? "" : "s"}
+            </p>
+          </div>
+        </header>
+        {users.length > 0 && (
+          <div className="users-filters">
+            <div className="users-filter users-filter-search">
+              <label htmlFor="users-search">Search</label>
+              <input
+                id="users-search"
+                type="search"
+                placeholder="Name or email…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
+            <div className="users-filter">
+              <label htmlFor="users-role">Role</label>
+              <select id="users-role" value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
+                <option value="">All roles</option>
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {roleLabel(r)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="users-filter">
+              <label htmlFor="users-status">Status</label>
+              <select
+                id="users-status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as "" | "active" | "inactive")}
+              >
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            {hasFilters && (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  setSearch("");
+                  setRoleFilter("");
+                  setStatusFilter("");
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
         {loading ? (
-          <p role="status" aria-live="polite">Loading…</p>
+          <p role="status" aria-live="polite" className="users-card-body">Loading…</p>
         ) : users.length === 0 ? (
-          <div className="empty-state">
-            <h3>No users yet</h3>
+          <div className="users-empty">
+            <h4>No users yet</h4>
+            <p>Create the first account with “+ New User”.</p>
+          </div>
+        ) : visibleUsers.length === 0 ? (
+          <div className="users-empty">
+            <h4>No users match these filters</h4>
           </div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div className="users-table-wrap">
+          <table className="users-table">
             <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "8px 4px" }}>Name</th>
-                <th style={{ padding: "8px 4px" }}>Email</th>
-                <th style={{ padding: "8px 4px" }}>Role</th>
-                <th style={{ padding: "8px 4px" }}>Manager</th>
-                <th style={{ padding: "8px 4px" }}>Access scope</th>
-                <th style={{ padding: "8px 4px" }}>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Manager</th>
+                <th>Access scope</th>
+                <th>
                   Governance designations
-                  <div style={{ fontSize: 11, fontWeight: 400, color: "#9a3412" }}>{POLICY_PENDING_LABEL}</div>
+                  <div className="users-policy-note">{POLICY_PENDING_LABEL}</div>
                 </th>
-                <th style={{ padding: "8px 4px" }}>Active</th>
-                <th style={{ padding: "8px 4px" }}><span className="sr-only">Actions</span></th>
+                <th>Active</th>
+                <th><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {visibleUsers.map((user) => (
                 <UserRow
                   key={user.id}
                   user={user}
@@ -152,6 +271,7 @@ export default function UsersAdminPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
     </div>
@@ -164,15 +284,14 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type UserField = "email" | "password" | "role";
 
 function validateNewUser(values: { email: string; password: string; role: string }) {
+  // The password is optional: blank means "email them a link to choose one".
   const errors: Partial<Record<UserField, string>> = {};
   if (!values.email.trim()) {
     errors.email = "Enter the user's email address.";
   } else if (!EMAIL_PATTERN.test(values.email.trim())) {
     errors.email = "Enter a valid email address, like name@company.com.";
   }
-  if (!values.password) {
-    errors.password = "Enter a temporary password.";
-  } else if (values.password.length < 8) {
+  if (values.password && values.password.length < 8) {
     errors.password = `Password must be at least 8 characters (currently ${values.password.length}).`;
   }
   if (!values.role) {
@@ -190,9 +309,11 @@ const USER_FIELD_IDS: Record<UserField, string> = {
 function CreateUserForm({
   managers,
   onCreated,
+  onCancel,
 }: {
   managers: CurrentUser[];
-  onCreated: () => void;
+  onCreated: (created: CurrentUser & { email_sent?: boolean }) => void;
+  onCancel: () => void;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -226,9 +347,9 @@ function CreateUserForm({
     setSubmitting(true);
     setError(null);
     try {
-      await createUser({
+      const created = await createUser({
         email,
-        password,
+        password: password || undefined,
         full_name: fullName || undefined,
         role,
         manager_id: managerId ? Number(managerId) : null,
@@ -240,7 +361,7 @@ function CreateUserForm({
       setManagerId("");
       setTouched({});
       setSubmitAttempted(false);
-      onCreated();
+      onCreated(created);
     } catch (err) {
       setError(friendlyError(err, "The user couldn't be created. Please check the details and try again."));
     } finally {
@@ -263,11 +384,11 @@ function CreateUserForm({
         event.preventDefault();
         handleSubmit();
       }}
-      style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 480 }}
+      className="users-form"
     >
       <ErrorSummary id="new-user-error-summary" items={summaryItems} />
 
-      <div>
+      <div className="users-field">
         <label htmlFor={USER_FIELD_IDS.email}>
           Email
           <RequiredMarker />
@@ -282,46 +403,41 @@ function CreateUserForm({
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           onBlur={() => markTouched("email")}
-          style={{ width: "100%", padding: 8, marginTop: 4 }}
         />
         <FieldError id={`${USER_FIELD_IDS.email}-error`} message={visibleError("email")} />
       </div>
 
-      <div>
+      <div className="users-field">
         <label htmlFor={USER_FIELD_IDS.password}>
-          Temporary password
-          <RequiredMarker />
+          Temporary password (optional)
         </label>
         <input
           id={USER_FIELD_IDS.password}
           type="text"
           autoComplete="new-password"
-          aria-required="true"
           aria-invalid={visibleError("password") ? true : undefined}
           aria-describedby={describedBy("password", `${USER_FIELD_IDS.password}-hint`)}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           onBlur={() => markTouched("password")}
-          style={{ width: "100%", padding: 8, marginTop: 4 }}
         />
-        <small id={`${USER_FIELD_IDS.password}-hint`} style={{ color: "#667085" }}>
-          At least 8 characters.
+        <small id={`${USER_FIELD_IDS.password}-hint`} className="users-hint">
+          Leave blank (recommended): the user gets an email with a link to choose their own password. Set one only if email is unavailable (at least 8 characters).
         </small>
         <FieldError id={`${USER_FIELD_IDS.password}-error`} message={visibleError("password")} />
       </div>
 
-      <div>
+      <div className="users-field">
         <label htmlFor="new-user-full-name">Full name</label>
         <input
           id="new-user-full-name"
           type="text"
           value={fullName}
           onChange={(event) => setFullName(event.target.value)}
-          style={{ width: "100%", padding: 8, marginTop: 4 }}
         />
       </div>
 
-      <div>
+      <div className="users-field">
         <label htmlFor={USER_FIELD_IDS.role}>
           Role
           <RequiredMarker />
@@ -334,11 +450,10 @@ function CreateUserForm({
           value={role}
           onChange={(event) => setRole(event.target.value as CurrentUser["role"])}
           onBlur={() => markTouched("role")}
-          style={{ width: "100%", padding: 8, marginTop: 4 }}
         >
           {ROLES.map((r) => (
             <option key={r} value={r}>
-              {r}
+              {roleLabel(r)}
             </option>
           ))}
         </select>
@@ -346,7 +461,7 @@ function CreateUserForm({
       </div>
 
       {role === "BUSINESS_USER" && (
-        <div>
+        <div className="users-field">
           <label htmlFor="new-user-manager">
             Manager (required to submit for approval later)
           </label>
@@ -354,7 +469,6 @@ function CreateUserForm({
             id="new-user-manager"
             value={managerId}
             onChange={(event) => setManagerId(event.target.value)}
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
           >
             <option value="">— none —</option>
             {managers.map((manager) => (
@@ -366,11 +480,16 @@ function CreateUserForm({
         </div>
       )}
 
-      {error && <p role="alert" style={{ color: "#b91c1c", margin: 0 }}>{error}</p>}
+      {error && <p role="alert" className="users-form-error">{error}</p>}
 
-      <button type="submit" className="primary-button" disabled={submitting}>
-        {submitting ? "Creating…" : "Create User"}
-      </button>
+      <div className="users-form-actions">
+        <button type="button" className="secondary-button" onClick={onCancel} disabled={submitting}>
+          Cancel
+        </button>
+        <button type="submit" className="primary-button" disabled={submitting}>
+          {submitting ? "Creating…" : "Create user"}
+        </button>
+      </div>
     </form>
   );
 }
@@ -411,8 +530,16 @@ function DesignationsEditor({
   }
 
   return (
-    <div style={{ fontSize: 13 }}>
-      {current.length ? current.map((d) => d.replace(/_/g, " ").toLowerCase()).join(", ") : "—"}
+    <div className="users-designations">
+      {current.length ? (
+        <div className="users-tags">
+          {current.map((d) => (
+            <span key={d} className="users-tag">{d.replace(/_/g, " ").toLowerCase()}</span>
+          ))}
+        </div>
+      ) : (
+        "—"
+      )}
       {allowed.length > 0 && !open && (
         <div>
           <button type="button" className="row-link-button" onClick={() => { setChosen(current); setOpen(true); }}>
@@ -421,10 +548,10 @@ function DesignationsEditor({
         </div>
       )}
       {open && (
-        <fieldset style={{ marginTop: 4, border: "1px solid #e5e7eb", borderRadius: 4, padding: 6 }}>
-          <legend style={{ fontSize: 12 }}>Designations for {user.full_name ?? user.email}</legend>
+        <fieldset className="users-fieldset">
+          <legend>Designations for {user.full_name ?? user.email}</legend>
           {allowed.map((d) => (
-            <label key={d} style={{ display: "block" }}>
+            <label key={d} className="users-check">
               <input
                 type="checkbox"
                 checked={chosen.includes(d)}
@@ -438,11 +565,11 @@ function DesignationsEditor({
             placeholder="Reason (required)"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            style={{ width: "100%", marginTop: 4 }}
+            className="users-input"
           />
-          <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-            <button type="button" disabled={busy} onClick={save}>Save</button>
-            <button type="button" onClick={() => setOpen(false)}>Cancel</button>
+          <div className="users-inline-actions">
+            <button type="button" className="secondary-button" disabled={busy} onClick={save}>Save</button>
+            <button type="button" className="link-button" onClick={() => setOpen(false)}>Cancel</button>
           </div>
           {error && <span role="alert" className="field-error">{error}</span>}
         </fieldset>
@@ -475,8 +602,6 @@ function UserRow({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [resettingPassword, setResettingPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetInvalid, setResetInvalid] = useState(false);
 
@@ -513,53 +638,60 @@ function UserRow({
     }
   }
 
-  async function handleResetPassword() {
-    if (newPassword.length < 8) {
-      setResetInvalid(true);
-      setResetMessage(`Password must be at least 8 characters (currently ${newPassword.length}).`);
-      return;
-    }
-    setResetInvalid(false);
+  // Emails the user a one-time link to choose a new password; the admin
+  // never sees or sets it.
+  async function handleSendResetEmail() {
     setSaving(true);
+    setResetInvalid(false);
     setResetMessage(null);
     try {
-      await updateUser(user.id, { password: newPassword });
-      setResetMessage(`Password set. They can now log in with: ${newPassword}`);
-      setNewPassword("");
+      setResetMessage(await sendResetEmail(user.id));
     } catch (err) {
-      setResetMessage(friendlyError(err, "The password couldn't be reset. Please try again."));
+      setResetInvalid(true);
+      setResetMessage(friendlyError(err, "The reset email couldn't be sent. Please try again."));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <tr style={{ borderBottom: "1px solid #f2f4f7" }}>
-      <td style={{ padding: "8px 4px" }}>{user.full_name ?? "—"}</td>
-      <td style={{ padding: "8px 4px" }}>{user.email}</td>
-      <td style={{ padding: "8px 4px" }}>
+    <tr className={user.is_active ? "" : "users-row-inactive"}>
+      <td>
+        <div className="users-person">
+          <span className="users-avatar" aria-hidden="true">
+            {(user.full_name ?? user.email).charAt(0).toUpperCase()}
+          </span>
+          <div>
+            <strong>{user.full_name ?? "—"}</strong>
+            <span>{user.email}</span>
+          </div>
+        </div>
+      </td>
+      <td>
         {editing ? (
           <select
             aria-label={`Role for ${user.email}`}
             value={role}
             onChange={(event) => setRole(event.target.value as CurrentUser["role"])}
+            className="users-input"
           >
             {ROLES.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {roleLabel(r)}
               </option>
             ))}
           </select>
         ) : (
-          user.role
+          <span className="users-role">{roleLabel(user.role)}</span>
         )}
       </td>
-      <td style={{ padding: "8px 4px" }}>
+      <td>
         {editing ? (
           <select
             aria-label={`Manager for ${user.email}`}
             value={managerId}
             onChange={(event) => setManagerId(event.target.value)}
+            className="users-input"
           >
             <option value="">— none —</option>
             {managers.map((manager) => (
@@ -572,33 +704,36 @@ function UserRow({
           managerLabel
         )}
       </td>
-      <td style={{ padding: "8px 4px" }}>
+      <td>
         {editing ? (
-          <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span className="users-scope-edit">
             <input
               aria-label={`Legal entities ${user.email} is limited to (comma-separated; blank for all)`}
               placeholder="Legal entities (blank = all)"
               value={entities}
               onChange={(event) => setEntities(event.target.value)}
+              className="users-input"
             />
             <input
               aria-label={`Business units ${user.email} is limited to (comma-separated; blank for all)`}
               placeholder="Business units (blank = all)"
               value={units}
               onChange={(event) => setUnits(event.target.value)}
+              className="users-input"
             />
             <input
               aria-label={`Countries ${user.email} is limited to (comma-separated; blank for all)`}
               placeholder="Countries (blank = all)"
               value={countries}
               onChange={(event) => setCountries(event.target.value)}
+              className="users-input"
             />
           </span>
         ) : (
-          scopeSummary(user)
+          <span className="users-scope">{scopeSummary(user)}</span>
         )}
       </td>
-      <td style={{ padding: "8px 4px" }}>
+      <td>
         {/* P3: designations allowed for this user's base role (server policy). */}
         <DesignationsEditor
           user={user}
@@ -608,66 +743,52 @@ function UserRow({
           onUpdated={onUpdated}
         />
       </td>
-      <td style={{ padding: "8px 4px" }}>{user.is_active ? "Yes" : "No"}</td>
-      <td style={{ padding: "8px 4px", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+      <td>
+        <span className={`users-status ${user.is_active ? "users-status-active" : "users-status-inactive"}`}>
+          {user.is_active ? "Active" : "Inactive"}
+        </span>
+      </td>
+      <td>
+        <div className="users-actions">
         {editing ? (
           <>
-            <button disabled={saving} onClick={handleSave}>
+            <button className="primary-button users-btn" disabled={saving} onClick={handleSave}>
               Save
             </button>
-            <button disabled={saving} onClick={() => setEditing(false)}>
+            <button className="secondary-button users-btn" disabled={saving} onClick={() => setEditing(false)}>
               Cancel
             </button>
           </>
         ) : (
           <>
-            <button disabled={saving} onClick={() => setEditing(true)}>
+            <button className="secondary-button users-btn" disabled={saving} onClick={() => setEditing(true)}>
               Edit
             </button>
-            <button disabled={saving} onClick={handleToggleActive}>
+            <button className="secondary-button users-btn" disabled={saving} onClick={handleToggleActive}>
               {user.is_active ? "Deactivate" : "Activate"}
             </button>
             <button
-              disabled={saving}
-              onClick={() => {
-                setResettingPassword((v) => !v);
-                setResetMessage(null);
-              }}
+              className="secondary-button users-btn"
+              disabled={saving || !user.is_active}
+              title={user.is_active ? "Email this user a link to choose a new password" : "Activate the account first"}
+              onClick={handleSendResetEmail}
             >
-              Reset Password
+              {saving ? "Sending…" : "Send reset email"}
             </button>
           </>
         )}
 
-        {resettingPassword && (
-          <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <input
-              type="text"
-              aria-label={`New password for ${user.email} (at least 8 characters)`}
-              aria-invalid={resetInvalid || undefined}
-              aria-describedby={resetMessage ? `reset-msg-${user.id}` : undefined}
-              placeholder="New password (min 8 chars)"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              style={{ padding: 4 }}
-            />
-            <button disabled={saving} onClick={handleResetPassword}>
-              Set
-            </button>
-          </span>
-        )}
-
-        {error && <span role="alert" style={{ color: "#b91c1c" }}>{error}</span>}
+        {error && <span role="alert" className="users-msg-error">{error}</span>}
         {resetMessage && (
           <span
             id={`reset-msg-${user.id}`}
             role={resetInvalid ? "alert" : "status"}
-            className={resetInvalid ? "field-error" : undefined}
-            style={resetInvalid ? undefined : { color: "#0f766e" }}
+            className={resetInvalid ? "field-error" : "users-msg-ok"}
           >
             {resetMessage}
           </span>
         )}
+        </div>
       </td>
     </tr>
   );
