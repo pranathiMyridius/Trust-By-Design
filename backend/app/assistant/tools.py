@@ -13,8 +13,9 @@ Design rules (see assistant/__init__.py):
     untrusted. It is truncated and returned inside a field named
     `*_untrusted`, and the system prompt tells the model to treat such
     fields as data, never as instructions.
-  * Document contents are never returned -- only the structured fields
-    the application itself recorded.
+  * Assessment document contents are never returned -- only the structured
+    fields the application itself recorded. The exception is the approved
+    knowledge-article library, which is shared reference material.
 """
 
 from __future__ import annotations
@@ -346,6 +347,38 @@ def get_risk_analysis(db: Session, user: User, args: dict[str, Any]) -> dict[str
 
 
 # ---------------------------------------------------------------------------
+# search_knowledge_articles
+# ---------------------------------------------------------------------------
+
+def search_knowledge_articles(db: Session, user: User, args: dict[str, Any]) -> dict[str, Any]:
+    """Approved knowledge articles (the Source Library) -- policies,
+    procedures, guidance and user how-to guides. Visible to every
+    signed-in user."""
+
+    query = _clip(args.get("query"), 200)
+    if not query:
+        raise ToolError("query is required")
+
+    from app.services.source_library import knowledge_context
+
+    rows = knowledge_context(db, query, limit=6, max_chars=500, include_guides=True)
+    return {
+        "matches": [
+            {
+                "article_id": row["article_id"],
+                "title": row["title"],
+                "type": row["type"],
+                "version": row["version"],
+                "past_review_date": row["past_review_date"],
+                "passage_untrusted": row["passage"],
+            }
+            for row in rows
+        ],
+        "note": "Only approved articles are searched. If nothing matches, say the library has no article on it.",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Registry (OpenAI tool-calling format)
 # ---------------------------------------------------------------------------
 
@@ -401,9 +434,25 @@ TOOL_SPECS: list[dict[str, Any]] = [
     },
 ]
 
+TOOL_SPECS.append(
+    {
+        "type": "function",
+        "function": {
+            "name": "search_knowledge_articles",
+            "description": "Search the approved knowledge articles (policies, procedures, control standards, guidance and user how-to guides uploaded to the Source Library) for passages on a topic. Use it for questions about what a policy says and for how-to questions about the workbench, e.g. resetting a password or how assessments are reviewed and approved.",
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string", "description": "Words describing the topic."}},
+                "required": ["query"],
+            },
+        },
+    }
+)
+
 TOOLS: dict[str, Callable[[Session, User, dict[str, Any]], dict[str, Any]]] = {
     "find_assessments": find_assessments,
     "get_assessment_summary": get_assessment_summary,
     "get_deadlines": get_deadlines,
     "get_risk_analysis": get_risk_analysis,
+    "search_knowledge_articles": search_knowledge_articles,
 }

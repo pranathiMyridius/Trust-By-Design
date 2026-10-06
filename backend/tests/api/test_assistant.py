@@ -221,7 +221,7 @@ def test_read_only_roles_can_use_the_assistant_but_nothing_else_changes(client, 
 def test_the_assistant_has_no_tool_that_can_change_anything():
     assert {spec["function"]["name"] for spec in tools.TOOL_SPECS} == set(tools.TOOLS)
     for name in tools.TOOLS:
-        assert name.startswith(("find_", "get_")), f"{name} does not look read-only"
+        assert name.startswith(("find_", "get_", "search_")), f"{name} does not look read-only"
 
 
 def test_tools_leave_the_database_untouched(client, auth, create_assessment, users):
