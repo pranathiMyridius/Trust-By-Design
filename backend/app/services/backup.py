@@ -6,7 +6,8 @@ A backup is one folder under BACKUP_DIR (default backend/backups/):
 
     backup-20260923T101500Z/
         database.sqlite   (SQLite: consistent online copy via the backup API)
-        database.dump     (Postgres: pg_dump -Fc, if pg_dump is on PATH)
+        database.dump     (Postgres: pg_dump -Fc, if pg_dump is found)
+        database.json    (Postgres without pg_dump: JSON export of every table)
         uploaded_files/   (every stored evidence file)
         manifest.json     (SHA-256 of every file, row counts, timings)
 
@@ -98,20 +99,84 @@ def _row_counts() -> dict[str, int]:
     return counts
 
 
+def _find_pg_dump() -> str | None:
+    """PG_DUMP_PATH (a file or the folder holding it) wins, then PATH, then the
+    usual PostgreSQL install folders on Windows, Linux and macOS."""
+
+    exe = "pg_dump.exe" if os.name == "nt" else "pg_dump"
+    configured = (os.getenv("PG_DUMP_PATH") or "").strip().strip('"')
+    if configured:
+        candidate = Path(configured)
+        if candidate.is_dir():
+            candidate = candidate / exe
+        if candidate.is_file():
+            return str(candidate)
+
+    found = shutil.which("pg_dump")
+    if found:
+        return found
+
+    patterns = [
+        r"C:\Program Files\PostgreSQL\*\bin",
+        r"C:\Program Files (x86)\PostgreSQL\*\bin",
+        "/usr/lib/postgresql/*/bin",
+        "/usr/pgsql-*/bin",
+        "/opt/homebrew/opt/postgresql*/bin",
+        "/usr/local/opt/postgresql*/bin",
+    ]
+    import glob
+
+    hits: list[str] = []
+    for pattern in patterns:
+        hits.extend(glob.glob(os.path.join(pattern, exe)))
+    # Newest installed version first.
+    hits.sort(reverse=True)
+    return hits[0] if hits else None
+
+
+def _json_export() -> bytes:
+    """Every table's rows as JSON, read in one repeatable-read transaction so
+    the export is a consistent snapshot. Not a substitute for pg_dump when you
+    need schema + restore tooling, but it needs nothing installed."""
+
+    from sqlalchemy import MetaData
+
+    tables: dict[str, list[dict]] = {}
+    with engine.connect().execution_options(isolation_level="REPEATABLE READ") as conn:
+        metadata = MetaData()
+        metadata.reflect(bind=conn)
+        for table in metadata.sorted_tables:
+            rows = conn.execute(table.select()).mappings().all()
+            tables[table.name] = [dict(r) for r in rows]
+    payload = {
+        "format": "risk-workbench-json-export/1",
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "tables": tables,
+    }
+    return json.dumps(payload, default=str).encode("utf-8")
+
+
 def _database_bytes() -> tuple[str, bytes]:
     """(file name, contents) of a consistent database copy, held in memory
     so it can be encrypted before anything is written."""
 
     if IS_POSTGRES:
-        pg_dump = shutil.which("pg_dump")
+        pg_dump = _find_pg_dump()
         if not pg_dump:
-            raise RuntimeError(
-                "pg_dump was not found on PATH, so the Postgres database can't be "
-                "backed up from the application. Install the PostgreSQL client tools "
-                "or rely on the database platform's own backups."
-            )
+            # No client tools on this machine (common when Postgres is hosted):
+            # fall back to a logical export of every table, read through the
+            # application's own database connection.
+            logger.warning("pg_dump not found; writing a JSON data export instead.")
+            return "database.json", _json_export()
         url = DATABASE_URL.replace("postgresql+psycopg2://", "postgresql://", 1)
-        dump = subprocess.run([pg_dump, "-Fc", url], check=True, capture_output=True)
+        try:
+            dump = subprocess.run([pg_dump, "-Fc", url], check=True, capture_output=True)
+        except subprocess.CalledProcessError as exc:
+            detail = (exc.stderr or b"").decode(errors="replace").strip().splitlines()
+            raise RuntimeError(
+                "pg_dump failed: " + (detail[-1] if detail else f"exit code {exc.returncode}")
+                + ". A pg_dump older than the database server version is a common cause."
+            ) from exc
         return "database.dump", dump.stdout
 
     src = sqlite3.connect(_sqlite_path())
