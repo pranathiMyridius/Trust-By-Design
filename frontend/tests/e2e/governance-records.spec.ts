@@ -62,7 +62,7 @@ test.describe("Governance records", () => {
     await login(page, "committee");
     await approvals(page).click();
     // Other journeys' assessments may be before the committee too.
-    const row = page.locator(".assessment-row").filter({ hasText: title });
+    const row = page.locator(".approval-item").filter({ hasText: title });
     await row.getByRole("textbox", { name: "Optional comment for your vote" }).fill("Within appetite.");
     await row.getByRole("button", { name: "Approve", exact: true }).first().click();
     // The full vote history sits in a collapsed section under the member cards.
