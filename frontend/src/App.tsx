@@ -11,7 +11,7 @@ import {
 
 import CreateAssessment from "./components/CreateAssessment";
 import { READ_ONLY_ROLES } from "./api/auth";
-import SourceLibraryPage from "./components/SourceLibraryPage";
+import GovernedSourceLibraryPage from "./components/GovernedSourceLibraryPage";
 import AssessmentsPage from "./components/AssessmentsPage";
 import AuditHistoryPage from "./components/AuditHistoryPage";
 import AssessmentWorkflow from "./components/AssessmentWorkflow";
@@ -688,7 +688,7 @@ function AuthenticatedApp({
           ) : currentPage === "governance" ? (
             <GovernancePage />
           ) : currentPage === "sources" ? (
-            <SourceLibraryPage canManage={user.role === "POLICY_ADMIN" || user.role === "ADMIN"} />
+            <GovernedSourceLibraryPage />
           ) : (
             <DashboardPage
               user={user}

@@ -120,3 +120,43 @@ def content_disposition(disposition: str, filename: str) -> str:
         char if 32 <= ord(char) < 127 and char not in '"\\' else "_" for char in filename
     ) or "document"
     return f"{disposition}; filename=\"{fallback}\"; filename*=UTF-8''{quote(filename, safe='')}"
+
+
+# -- Source Library documents --------------------------------------------------
+# A private directory of its own (SOURCE_LIBRARY_STORAGE_DIR, default
+# <storage>/source_library). Files are named by a random id -- never by the
+# client's filename -- are encrypted at rest when FILE_ENCRYPTION_KEY is set,
+# and are only ever served through the authenticated API. The database keeps
+# the relative key, so the directory can move without rewriting rows.
+
+LIBRARY_DIR = os.path.abspath(os.getenv("SOURCE_LIBRARY_STORAGE_DIR") or os.path.join(STORAGE_DIR, "source_library"))
+os.makedirs(LIBRARY_DIR, exist_ok=True)
+
+
+def save_library_file(file_content: bytes) -> str:
+    """Stores a Source Library PDF; returns its storage key."""
+
+    key = f"{uuid.uuid4().hex}.pdf"
+    payload = encrypt_bytes(file_content) if encryption_enabled() else file_content
+    with open(os.path.join(LIBRARY_DIR, key), "wb") as f:
+        f.write(payload)
+    return key
+
+
+def _library_path(key: str) -> str:
+    # Keys are generated here; refuse anything that could leave the directory.
+    if not key or os.path.basename(key) != key or key in {".", ".."}:
+        raise FileNotFoundError(key)
+    return os.path.join(LIBRARY_DIR, key)
+
+
+def read_library_file(key: str) -> bytes:
+    with open(_library_path(key), "rb") as f:
+        return decrypt_bytes(f.read())
+
+
+def delete_library_file(key: str) -> None:
+    try:
+        os.remove(_library_path(key))
+    except FileNotFoundError:
+        pass

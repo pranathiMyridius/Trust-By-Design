@@ -1,0 +1,337 @@
+{
+  "_comment": "Starter catalogue for the Source Library. Every entry is created as a DRAFT with a placeholder version: nothing here is approved or usable as assessment evidence until an authorised compliance reviewer approves it. source_url values other than the RBI KYC Direction (supplied by the project owner) are best-known official landing pages and MUST be confirmed by the source owner before approval. Internal documents have no URL: upload the controlled PDF.",
+  "defaults": {
+    "owner": "FCRM Compliance Owner",
+    "review_frequency": "Quarterly, or when the publisher updates it",
+    "version_label": "Not yet captured"
+  },
+  "sources": [
+    {
+      "source_code": "SRC-RBI-KYC-001",
+      "title": "Master Direction - Know Your Customer (KYC) Direction, 2016",
+      "authority": "Reserve Bank of India",
+      "category": "REGULATORY_REQUIREMENT",
+      "jurisdiction": "India",
+      "applicable_entity": "Indian Regulated Entity",
+      "source_url": "https://www.rbi.org.in/CommonPerson/english/scripts/notification.aspx?id=2607",
+      "url_confirmed": true,
+      "topics": ["ML/TF risk assessment", "Risk-based approach", "Customer acceptance policy", "Customer identification procedure", "KYC", "CDD", "Beneficial ownership", "Non-face-to-face customers", "Wire transfers", "Sanctions screening", "Ongoing due diligence", "Transaction monitoring", "Customer risk", "Geographic risk", "Delivery-channel risk", "Board-approved KYC policy"],
+      "description": "Core India source for ML/TF risk assessment (customers, geography, products, services, transactions and delivery channels), KYC/CDD, beneficial ownership, transaction monitoring, sanctions-list screening, customer risk categories and board oversight. The assessment must be documented, proportionate and reviewed at least annually."
+    },
+    {
+      "source_code": "SRC-RBI-FAQ-001",
+      "title": "RBI KYC Directions - Frequently Asked Questions",
+      "authority": "Reserve Bank of India",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "India",
+      "applicable_entity": "Indian Regulated Entity",
+      "source_url": "https://www.rbi.org.in/Scripts/FAQView.aspx",
+      "topics": ["KYC", "Customer risk", "Risk categorisation"],
+      "description": "Plain-language reference for customer-risk categorisation and implementation questions."
+    },
+    {
+      "source_code": "SRC-RBI-NOTIF-001",
+      "title": "RBI Notifications and Circulars",
+      "authority": "Reserve Bank of India",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "India",
+      "applicable_entity": "Indian Regulated Entity",
+      "source_url": "https://www.rbi.org.in/Scripts/NotificationUser.aspx",
+      "topics": ["KYC", "AML", "Payments", "Outsourcing", "Change tracking"],
+      "description": "Track changes to KYC, AML, payments, outsourcing and related risk requirements."
+    },
+    {
+      "source_code": "SRC-IND-PMLA-001",
+      "title": "Prevention of Money Laundering Act, 2002",
+      "authority": "Government of India",
+      "category": "REGULATORY_REQUIREMENT",
+      "jurisdiction": "India",
+      "applicable_entity": "Indian Reporting Entity",
+      "source_url": "https://www.indiacode.nic.in/",
+      "topics": ["AML legal framework", "Reporting entity", "Record maintenance"],
+      "description": "Indian AML legal framework. Locate the Act on India Code and record the exact URL and amendment date."
+    },
+    {
+      "source_code": "SRC-IND-PMLR-001",
+      "title": "Prevention of Money-laundering (Maintenance of Records) Rules, 2005",
+      "authority": "Government of India",
+      "category": "REGULATORY_REQUIREMENT",
+      "jurisdiction": "India",
+      "applicable_entity": "Indian Reporting Entity",
+      "source_url": "https://www.indiacode.nic.in/",
+      "topics": ["Record maintenance", "Reporting", "CDD"],
+      "description": "Record-maintenance, reporting, CDD and related operational obligations."
+    },
+    {
+      "source_code": "SRC-FIUIND-001",
+      "title": "Financial Intelligence Unit - India (FIU-IND) reporting resources",
+      "authority": "Financial Intelligence Unit - India",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "India",
+      "applicable_entity": "Indian Reporting Entity",
+      "source_url": "https://fiuindia.gov.in/",
+      "topics": ["Suspicious transaction reporting", "Reporting entity", "AML reporting"],
+      "description": "Official reporting-entity and AML reporting information."
+    },
+    {
+      "source_code": "SRC-FATF-REC-001",
+      "title": "FATF Recommendations",
+      "authority": "Financial Action Task Force",
+      "category": "REGULATORY_REQUIREMENT",
+      "jurisdiction": "Global",
+      "source_url": "https://www.fatf-gafi.org/en/topics/fatf-recommendations.html",
+      "topics": ["Risk-based approach", "CDD", "Beneficial ownership", "Suspicious transactions", "Sanctions", "Governance"],
+      "description": "Global AML/CFT standard."
+    },
+    {
+      "source_code": "SRC-FATF-RBA-001",
+      "title": "FATF Guidance - Risk-Based Approach for the Banking Sector",
+      "authority": "Financial Action Task Force",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "Global",
+      "source_url": "https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Risk-based-approach-banking-sector.html",
+      "topics": ["Risk-based approach", "Risk assessment methodology", "Customer risk", "Product risk", "Geographic risk", "Controls"],
+      "description": "Product, customer, geography, transaction and control methodology for banks."
+    },
+    {
+      "source_code": "SRC-FATF-HRJ-001",
+      "title": "FATF High-Risk and Other Monitored Jurisdictions",
+      "authority": "Financial Action Task Force",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "Global",
+      "source_url": "https://www.fatf-gafi.org/en/countries/black-and-grey-lists.html",
+      "topics": ["Geographic risk", "Country review", "High-risk jurisdictions"],
+      "description": "Geographic-risk and country-review input. The lists change several times a year; review at each FATF plenary."
+    },
+    {
+      "source_code": "SRC-FATF-ME-001",
+      "title": "FATF Mutual Evaluations",
+      "authority": "Financial Action Task Force",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "Global",
+      "source_url": "https://www.fatf-gafi.org/en/topics/mutual-evaluations.html",
+      "topics": ["Geographic risk", "Country effectiveness", "Technical compliance"],
+      "description": "Country AML/CFT effectiveness and technical-compliance context."
+    },
+    {
+      "source_code": "SRC-FATF-PF-001",
+      "title": "FATF Guidance on Proliferation Financing Risk Assessment and Mitigation",
+      "authority": "Financial Action Task Force",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "Global",
+      "source_url": "https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Proliferation-financing-risk-assessment-mitigation.html",
+      "topics": ["Proliferation financing", "Targeted financial sanctions", "Sanctions evasion"],
+      "description": "PF-risk and targeted-financial-sanctions assessment."
+    },
+    {
+      "source_code": "SRC-EGMONT-001",
+      "title": "Egmont Group - FIU intelligence and typologies",
+      "authority": "Egmont Group of Financial Intelligence Units",
+      "category": "TYPOLOGY",
+      "jurisdiction": "Global",
+      "source_url": "https://egmontgroup.org/",
+      "topics": ["Typologies", "Financial intelligence"],
+      "description": "FIU intelligence, AML/CFT typologies and strategic financial-intelligence material."
+    },
+    {
+      "source_code": "SRC-FFIEC-RA-001",
+      "title": "FFIEC BSA/AML Examination Manual - Risk Assessment",
+      "authority": "Federal Financial Institutions Examination Council",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "United States",
+      "source_url": "https://bsaaml.ffiec.gov/manual/RiskAssessment/01",
+      "topics": ["Risk assessment", "Products and services", "Customers", "Geographic locations", "Controls", "Audit"],
+      "description": "Product, customer, geography, transaction, risk-factor, control and audit design."
+    },
+    {
+      "source_code": "SRC-FFIEC-MAN-001",
+      "title": "FFIEC BSA/AML Examination Manual",
+      "authority": "Federal Financial Institutions Examination Council",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "United States",
+      "source_url": "https://bsaaml.ffiec.gov/manual",
+      "topics": ["BSA/AML program", "Examination procedures"],
+      "description": "United States BSA/AML examination manual."
+    },
+    {
+      "source_code": "SRC-FINCEN-001",
+      "title": "FinCEN advisories and notices",
+      "authority": "Financial Crimes Enforcement Network",
+      "category": "TYPOLOGY",
+      "jurisdiction": "United States",
+      "source_url": "https://www.fincen.gov/resources/advisories",
+      "topics": ["Typologies", "Advisories", "Red flags"],
+      "description": "Advisories and notices on illicit-finance typologies and red flags."
+    },
+    {
+      "source_code": "SRC-FCA-FCG-001",
+      "title": "FCA Financial Crime Guide",
+      "authority": "Financial Conduct Authority",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "United Kingdom",
+      "source_url": "https://www.handbook.fca.org.uk/handbook/FCG/",
+      "topics": ["Financial crime systems and controls", "Risk assessment", "Governance", "Monitoring"],
+      "description": "Supports the design of financial-crime systems, controls, risk assessments, governance and monitoring."
+    },
+    {
+      "source_code": "SRC-FCA-FG185-001",
+      "title": "FCA FG18/5 - Financial crime systems and controls guidance",
+      "authority": "Financial Conduct Authority",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "United Kingdom",
+      "source_url": "https://www.fca.org.uk/publication/finalised-guidance/fg18-5.pdf",
+      "topics": ["Financial crime systems and controls"],
+      "description": "FCA finalised guidance on financial-crime systems and controls."
+    },
+    {
+      "source_code": "SRC-EBA-RF-001",
+      "title": "EBA Guidelines on ML/TF Risk Factors",
+      "authority": "European Banking Authority",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "European Union",
+      "source_url": "https://www.eba.europa.eu/regulation-and-policy/anti-money-laundering-and-countering-financing-terrorism",
+      "topics": ["Customer risk", "Country risk", "Product risk", "Service risk", "Transaction risk", "Delivery-channel risk"],
+      "description": "Detailed customer, country, product, service, transaction and delivery-channel risk factors. Capture the Guidelines PDF itself."
+    },
+    {
+      "source_code": "SRC-EBA-RM-001",
+      "title": "EBA guidance on restrictive measures",
+      "authority": "European Banking Authority",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "European Union",
+      "source_url": "https://www.eba.europa.eu/regulation-and-policy/anti-money-laundering-and-countering-financing-terrorism",
+      "topics": ["Restrictive measures", "Sanctions", "Internal policies and controls"],
+      "description": "EBA guidance on internal policies, procedures and controls for restrictive measures."
+    },
+    {
+      "source_code": "SRC-FINTRAC-001",
+      "title": "FINTRAC compliance guidance",
+      "authority": "Financial Transactions and Reports Analysis Centre of Canada",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "Canada",
+      "source_url": "https://fintrac-canafe.canada.ca/guidance-directives/intro-eng",
+      "topics": ["Compliance program", "Reporting"],
+      "description": "Canadian AML compliance guidance."
+    },
+    {
+      "source_code": "SRC-FINTRAC-RA-001",
+      "title": "FINTRAC risk assessment guidance",
+      "authority": "Financial Transactions and Reports Analysis Centre of Canada",
+      "category": "REGULATORY_GUIDANCE",
+      "jurisdiction": "Canada",
+      "source_url": "https://fintrac-canafe.canada.ca/guidance-directives/compliance-conformite/rba/rba-eng",
+      "topics": ["Risk assessment", "Risk-based approach"],
+      "description": "Canadian guidance on the risk-based approach and risk assessment."
+    },
+    {
+      "source_code": "SRC-OFAC-FWK-001",
+      "title": "OFAC - A Framework for OFAC Compliance Commitments",
+      "authority": "U.S. Department of the Treasury - Office of Foreign Assets Control",
+      "category": "SANCTIONS_RESOURCE",
+      "jurisdiction": "United States",
+      "source_url": "https://ofac.treasury.gov/media/16331/download?inline",
+      "topics": ["Sanctions compliance program", "Governance", "Testing and auditing", "Training"],
+      "description": "Sanctions programme governance and control design."
+    },
+    {
+      "source_code": "SRC-OFAC-SLS-001",
+      "title": "OFAC Sanctions List Search",
+      "authority": "U.S. Department of the Treasury - Office of Foreign Assets Control",
+      "category": "SANCTIONS_RESOURCE",
+      "jurisdiction": "United States",
+      "source_url": "https://sanctionssearch.ofac.treas.gov/",
+      "topics": ["Sanctions screening"],
+      "description": "U.S. sanctions screening and research. A list match is an alert for human investigation, never a final sanctions decision."
+    },
+    {
+      "source_code": "SRC-OFAC-IPS-001",
+      "title": "OFAC guidance on instant payment systems",
+      "authority": "U.S. Department of the Treasury - Office of Foreign Assets Control",
+      "category": "SANCTIONS_RESOURCE",
+      "jurisdiction": "United States",
+      "source_url": "https://ofac.treasury.gov/",
+      "topics": ["Sanctions", "Instant payments", "Cross-border payments"],
+      "description": "Relevant to cross-border payments scenarios. Locate the guidance PDF on the OFAC site and record its exact URL."
+    },
+    {
+      "source_code": "SRC-UN-SAN-001",
+      "title": "United Nations Security Council Consolidated List",
+      "authority": "United Nations Security Council",
+      "category": "SANCTIONS_RESOURCE",
+      "jurisdiction": "Global",
+      "source_url": "https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list",
+      "topics": ["Sanctions screening", "Targeted financial sanctions"],
+      "description": "UN targeted sanctions screening. A list match is an alert for human investigation, never a final sanctions decision."
+    },
+    {
+      "source_code": "SRC-UK-OFSI-001",
+      "title": "UK Sanctions List and OFSI guidance",
+      "authority": "HM Treasury - Office of Financial Sanctions Implementation",
+      "category": "SANCTIONS_RESOURCE",
+      "jurisdiction": "United Kingdom",
+      "source_url": "https://www.gov.uk/government/organisations/office-of-financial-sanctions-implementation",
+      "topics": ["Sanctions screening", "Sanctions implementation"],
+      "description": "UK sanctions screening reference and implementation guidance (also: gov.uk 'The UK Sanctions List')."
+    },
+    {
+      "source_code": "SRC-EU-SAN-001",
+      "title": "EU Financial Sanctions Files",
+      "authority": "European Commission",
+      "category": "SANCTIONS_RESOURCE",
+      "jurisdiction": "European Union",
+      "source_url": "https://data.europa.eu/data/datasets/consolidated-list-of-persons-groups-and-entities-subject-to-eu-financial-sanctions",
+      "topics": ["Sanctions screening", "Consolidated list"],
+      "description": "EU consolidated sanctions data. A list match is an alert for human investigation, never a final sanctions decision."
+    },
+    {
+      "source_code": "SRC-INT-AML-001",
+      "title": "Internal AML / FCRM Policy",
+      "authority": "Internal - Group Compliance",
+      "category": "INTERNAL_POLICY",
+      "jurisdiction": "Global",
+      "source_url": null,
+      "topics": ["AML", "FCRM", "Governance"],
+      "description": "Upload the controlled, board-approved copy as a PDF."
+    },
+    {
+      "source_code": "SRC-INT-KYC-001",
+      "title": "Internal KYC / CDD Procedure",
+      "authority": "Internal - Group Compliance",
+      "category": "PROCEDURE",
+      "jurisdiction": "Global",
+      "source_url": null,
+      "topics": ["KYC", "CDD", "EDD"],
+      "description": "Upload the controlled copy as a PDF."
+    },
+    {
+      "source_code": "SRC-INT-SAN-001",
+      "title": "Internal Sanctions Policy",
+      "authority": "Internal - Group Compliance",
+      "category": "INTERNAL_POLICY",
+      "jurisdiction": "Global",
+      "source_url": null,
+      "topics": ["Sanctions", "Screening", "Escalation"],
+      "description": "Upload the controlled copy as a PDF."
+    },
+    {
+      "source_code": "SRC-INT-CONTROL-001",
+      "title": "Internal Control Library",
+      "authority": "Internal - Group Compliance",
+      "category": "CONTROL_LIBRARY",
+      "jurisdiction": "Global",
+      "source_url": null,
+      "topics": ["Controls", "Control testing"],
+      "description": "Upload the controlled copy as a PDF."
+    },
+    {
+      "source_code": "SRC-INT-METH-001",
+      "title": "Internal Risk Methodology",
+      "authority": "Internal - Group Compliance",
+      "category": "RISK_METHODOLOGY",
+      "jurisdiction": "Global",
+      "source_url": null,
+      "topics": ["Risk methodology", "Inherent risk", "Residual risk"],
+      "description": "Upload the controlled copy as a PDF."
+    }
+  ]
+}

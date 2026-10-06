@@ -29,7 +29,12 @@ SOURCE_TYPES = {
     "RISK_FRAMEWORK": "Approved risk framework",
     "PREVIOUS_ASSESSMENT": "Previous assessment",
     "VENDOR_CONTROL_DOCUMENTATION": "Vendor-control documentation",
+    # Help articles for users of the workbench itself (how to reset a
+    # password, how assessments are approved). Searchable by the assistant,
+    # but never offered as risk evidence or AI risk-analysis context.
+    "USER_GUIDE": "User guide / How-to",
 }
+GUIDE_TYPE = "USER_GUIDE"
 SOURCE_STATUSES = {"DRAFT", "APPROVED", "RETIRED"}
 
 # Search terms implied by each risk category, so a factor finds its
@@ -93,6 +98,8 @@ def search(
     extra_phrases: list[str] | None = None,
     source_types: list[str] | None = None,
     limit: int = 8,
+    include_guides: bool = False,
+    exclude_governed: bool = False,
 ) -> list[dict]:
     """Ranked passages from APPROVED sources matching `query` (and any
     extra phrases), best first."""
@@ -105,6 +112,17 @@ def search(
     sources_query = db.query(ApprovedSource).filter(ApprovedSource.status == "APPROVED")
     if source_types:
         sources_query = sources_query.filter(ApprovedSource.source_type.in_(source_types))
+    if not include_guides:
+        sources_query = sources_query.filter(ApprovedSource.source_type != GUIDE_TYPE)
+    if exclude_governed:
+        # Sources that live in the governed Source Library (versions, review,
+        # jurisdiction) reach risk analysis only through its filtered,
+        # citable retrieval (app/services/source_retrieval.py) -- not through
+        # this keyword search, which knows nothing of jurisdiction.
+        from app.models.source_library import SourceVersion
+
+        governed = db.query(SourceVersion.legacy_source_id).filter(SourceVersion.legacy_source_id.isnot(None))
+        sources_query = sources_query.filter(ApprovedSource.id.notin_(governed))
     sources = sources_query.all()
     if not sources:
         return []
@@ -165,3 +183,28 @@ def search_for_factor(db: Session, factor, limit: int = 5) -> list[dict]:
         extra_phrases=CATEGORY_TERMS.get(factor.category, []) + indicators,
         limit=limit,
     )
+
+
+def knowledge_context(
+    db: Session,
+    query: str,
+    limit: int = 6,
+    max_chars: int = 700,
+    include_guides: bool = False,
+    exclude_governed: bool = False,
+) -> list[dict]:
+    """Passages from approved knowledge articles, trimmed for use as AI
+    context. Best-effort and read-only; an empty list when nothing matches.
+    User guides are left out unless asked for."""
+
+    return [
+        {
+            "article_id": row["source_id"],
+            "title": row["source_title"],
+            "type": row["source_type_label"],
+            "version": row["source_version"],
+            "past_review_date": row["outdated"],
+            "passage": row["passage"][:max_chars],
+        }
+        for row in search(db, query, limit=limit, include_guides=include_guides, exclude_governed=exclude_governed)
+    ]

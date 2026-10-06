@@ -11,6 +11,7 @@ export const SOURCE_TYPES: { value: string; label: string }[] = [
   { value: "RISK_FRAMEWORK", label: "Approved risk framework" },
   { value: "PREVIOUS_ASSESSMENT", label: "Previous assessment" },
   { value: "VENDOR_CONTROL_DOCUMENTATION", label: "Vendor-control documentation" },
+  { value: "USER_GUIDE", label: "User guide / How-to" },
 ];
 
 export interface SourceFields {

@@ -36,7 +36,11 @@ from tests.conftest import ok
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 # Reachable without a token, by design.
-PUBLIC = {("POST", "/api/auth/login")}
+PUBLIC = {
+    ("POST", "/api/auth/login"),
+    ("POST", "/api/auth/forgot-password"),
+    ("POST", "/api/auth/reset-password"),
+}
 
 PLACEHOLDER = "999999"
 

@@ -46,7 +46,7 @@ def test_library_admin_uploads_a_text_document_and_saves_it_as_a_draft(client, a
         201,
     )
     assert source["status"] == "DRAFT"
-    ok(client.post(f"/api/sources/{source['id']}/approve", json={"reason": "Reviewed."}, headers=auth("admin")))
+    ok(client.post(f"/api/sources/{source['id']}/approve", json={"reason": "Reviewed."}, headers=auth("compliance")))
     hits = ok(client.get("/api/sources/search?q=beneficial owners", headers=auth("analyst")))
     assert any(hit["source_id"] == source["id"] for hit in hits)
 
@@ -108,7 +108,7 @@ def test_the_original_document_is_kept_encrypted_and_downloadable(client, auth):
     assert admin_copy.status_code == 200 and admin_copy.content == original
     assert "attachment" in admin_copy.headers["content-disposition"] and "cdd-policy.txt" in admin_copy.headers["content-disposition"]
 
-    ok(client.post(f"/api/sources/{source['id']}/approve", json={"reason": "Reviewed."}, headers=auth("admin")))
+    ok(client.post(f"/api/sources/{source['id']}/approve", json={"reason": "Reviewed."}, headers=auth("compliance")))
     analyst_copy = client.get(url, headers=auth("analyst"))
     assert analyst_copy.status_code == 200 and analyst_copy.content == original
 

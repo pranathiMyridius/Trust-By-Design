@@ -106,6 +106,12 @@ _USER_ROLES = {
     # G-5 quorum (2026-10-03): the two representative seats.
     "fcrm_rep": "COMMITTEE_MEMBER",
     "business_rep": "COMMITTEE_MEMBER",
+    # Source Library: authorised compliance reviewers (two, so one can
+    # decide what the other cannot), a maintainer, and a read-only auditor.
+    "compliance": "MANAGER",
+    "compliance2": "MANAGER",
+    "policy": "POLICY_ADMIN",
+    "auditor": "AUDITOR",
 }
 
 _DESIGNATIONS = {
@@ -115,6 +121,8 @@ _DESIGNATIONS = {
     "chair": ["COMMITTEE_CHAIR"],
     "fcrm_rep": ["COMMITTEE_FCRM_COMPLIANCE_REP"],
     "business_rep": ["COMMITTEE_BUSINESS_RISK_REP"],
+    "compliance": ["COMPLIANCE_MANAGER"],
+    "compliance2": ["FCRM_GOVERNANCE_OWNER"],
 }
 
 

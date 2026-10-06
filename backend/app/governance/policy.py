@@ -154,6 +154,23 @@ DEFAULT_POLICY: dict = {
     # Indicators whose change is CRITICAL (they drive escalation rules);
     # the active methodology's escalation-rule indicators are added.
     "critical_indicators": ["SANCTIONS_EXPOSURE", "COMPLEX_OWNERSHIP_STRUCTURES"],
+    # -- Source Library -- PROVISIONAL, pending governance approval. Who may
+    # maintain sources, and who may approve or reject a version for formal
+    # use. Reviewers are designation-based (the "FCRM Compliance Owner or
+    # Legal/Compliance reviewer"); a plain Admin or Policy Admin maintains
+    # but does not review, so no one approves what they prepared.
+    "source_library": {
+        "maintainers": {"roles": ["POLICY_ADMIN", "ADMIN"]},
+        "reviewers": {"designations": [COMPLIANCE_MANAGER, FCRM_GOVERNANCE_OWNER, HEAD_OF_FCRM]},
+        # May read drafts, review history and the audit timeline; change nothing.
+        "viewers": {"roles": ["AUDITOR"]},
+        # The creator and the submitter of a version can never decide it.
+        "require_independent_review": True,
+        "min_comment_length": 10,
+        # Sources for this jurisdiction (and for "Global") apply to every
+        # assessment; others apply when the assessment names the jurisdiction.
+        "home_jurisdiction": "India",
+    },
     # -- Retention (P5, R16.4) -- PROVISIONAL, pending governance approval.
     # No period is compliance-approved (Q-3). See app/governance/retention.py.
     "retention": {

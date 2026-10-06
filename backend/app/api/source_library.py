@@ -20,6 +20,7 @@ from app.models.approved_source import ApprovedSource, SourceEvidenceLink
 from app.models.assessment import Assessment
 from app.models.risk_factor import RiskFactor
 from app.models.user import User, UserRole
+from app.services import source_governance as gov
 from app.services import source_library
 from app.services.audit_service import AuditAction, actor_name, log_audit_event
 from app.services.decision_lock import ensure_assessment_editable
@@ -27,6 +28,12 @@ from app.services.decision_lock import ensure_assessment_editable
 router = APIRouter(tags=["Evidence Sources"])
 
 require_library_admin = require_role(UserRole.POLICY_ADMIN, UserRole.ADMIN)
+
+
+def require_library_admin_user(user: User) -> None:
+    if user.role not in {UserRole.POLICY_ADMIN.value, UserRole.ADMIN.value}:
+        raise HTTPException(status_code=403, detail="You do not have permission to perform this action.")
+
 LIBRARY_ADMIN_ROLES = {UserRole.POLICY_ADMIN.value, UserRole.ADMIN.value}
 
 
@@ -235,6 +242,7 @@ def create_source(
     source = ApprovedSource(**payload.model_dump(), status="DRAFT", created_by=actor_name(current_user))
     db.add(source)
     db.flush()
+    _register_governed(db, current_user, source)
     _log(db, current_user, f"Source '{source.title}' v{source.version} added as a draft.")
     db.commit()
     db.refresh(source)
@@ -260,6 +268,9 @@ def update_source(
         if field in {"title", "version", "content"} and not (value or "").strip():
             raise HTTPException(status_code=422, detail=f"{field} can't be blank.")
         setattr(source, field, value.strip() if isinstance(value, str) else value)
+    db.flush()
+    if source.source_type != source_library.GUIDE_TYPE:
+        gov.sync_from_legacy(db, current_user, source)
     _log(db, current_user, f"Draft source '{source.title}' edited ({', '.join(sorted(changes)) or 'nothing'}).")
     db.commit()
     db.refresh(source)
@@ -339,7 +350,7 @@ async def create_source_with_file(
     current_user: User = Depends(require_library_admin),
 ):
     """
-    R5.1/R5.3: a draft source created from an uploaded document. The
+    R5.1/R5.3: a source created from an uploaded document. The
     reviewed text is the searchable content; the original file is kept with
     it (encrypted at rest, with its SHA-256) and never replaced -- a revised
     document is a new source version.
@@ -371,9 +382,24 @@ async def create_source_with_file(
         raise HTTPException(status_code=400, detail="The uploaded file is empty.")
     ensure_upload_size(filename, data)
 
+    # A help article for workbench users (USER_GUIDE) is published at once --
+    # it is never risk evidence. Every other type (policy, procedure,
+    # regulatory guidance ...) is a draft that an authorised compliance
+    # reviewer must approve before it can be used (Source Library workflow).
+    publish_now = fields.source_type == source_library.GUIDE_TYPE
+    approval = (
+        {
+            "status": "APPROVED",
+            "approved_by": actor_name(current_user),
+            "approved_by_id": current_user.id,
+            "approved_at": datetime.now(timezone.utc),
+        }
+        if publish_now
+        else {"status": "DRAFT"}
+    )
     source = ApprovedSource(
         **fields.model_dump(),
-        status="DRAFT",
+        **approval,
         created_by=actor_name(current_user),
         original_filename=filename,
         file_path=save_source_file(filename, data),
@@ -383,10 +409,15 @@ async def create_source_with_file(
     )
     db.add(source)
     db.flush()
+    _register_governed(db, current_user, source)
     _log(
         db, current_user,
-        f"Source '{source.title}' v{source.version} added as a draft from {filename} "
-        f"({len(data):,} bytes, sha256 {source.file_sha256[:12]}…).",
+        (
+            f"Help article '{source.title}' v{source.version} uploaded from {filename} and published as approved "
+            if publish_now
+            else f"Source '{source.title}' v{source.version} added as a draft from {filename} "
+        )
+        + f"({len(data):,} bytes, sha256 {source.file_sha256[:12]}…).",
     )
     db.commit()
     db.refresh(source)
@@ -433,23 +464,58 @@ def download_source_file(
     )
 
 
+def _register_governed(db: Session, user: User, source: ApprovedSource) -> None:
+    """Regulatory and policy sources created through this API are governed by
+    the Source Library workflow. Help articles for workbench users
+    (USER_GUIDE) are not regulatory sources, are never used as risk evidence,
+    and keep the earlier behaviour."""
+
+    if source.source_type != source_library.GUIDE_TYPE:
+        gov.register_legacy(db, user, source)
+
+
+def _governed_version(db: Session, source: ApprovedSource, user: User):
+    """The record/version a legacy source is governed through (created on
+    first use for a source that predates the Source Library module)."""
+
+    version = gov.version_for_legacy(db, source)
+    if version is None:
+        record, version = gov.register_legacy(db, user, source)
+        db.flush()
+    return version.record, version
+
+
 @router.post("/api/sources/{source_id}/approve", response_model=SourceResponse)
 def approve_source(
     source_id: int,
     payload: ReasonBody,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_library_admin),
+    current_user: User = Depends(get_current_user),
 ):
-    """R5.2: only an approved source is used as formal evidence."""
+    """R5.2: only an approved source is used as formal evidence. Goes through
+    the Source Library workflow: only an authorised compliance reviewer may
+    approve, never someone who prepared or submitted the source."""
 
     source = _source_or_404(db, source_id)
+    if source.source_type == source_library.GUIDE_TYPE:
+        require_library_admin_user(current_user)
+        if source.status != "DRAFT":
+            raise HTTPException(status_code=409, detail=f"This source is {source.status}; only a draft can be approved.")
+        source.status = "APPROVED"
+        source.approved_by = actor_name(current_user)
+        source.approved_by_id = current_user.id
+        source.approved_at = datetime.now(timezone.utc)
+        _log(db, current_user, f"Help article '{source.title}' v{source.version} approved. Reason: {payload.reason}")
+        db.commit()
+        db.refresh(source)
+        return _source_response(source)
+    gov.require_reviewer(current_user)
     if source.status != "DRAFT":
         raise HTTPException(status_code=409, detail=f"This source is {source.status}; only a draft can be approved.")
-    source.status = "APPROVED"
-    source.approved_by = actor_name(current_user)
-    source.approved_by_id = current_user.id
-    source.approved_at = datetime.now(timezone.utc)
-    _log(db, current_user, f"Source '{source.title}' v{source.version} approved. Reason: {payload.reason}")
+    record, version = _governed_version(db, source, current_user)
+    if version.status == "DRAFT":
+        gov.implicit_submit(db, record, version)
+    gov.approve(db, current_user, record, version, payload.reason, min_length=1)
     db.commit()
     db.refresh(source)
     return _source_response(source)
@@ -465,8 +531,11 @@ def retire_source(
     source = _source_or_404(db, source_id)
     if source.status == "RETIRED":
         raise HTTPException(status_code=409, detail="This source is already retired.")
-    source.status = "RETIRED"
+    if source.source_type != source_library.GUIDE_TYPE:
+        record, version = _governed_version(db, source, current_user)
+        gov.retire_version(db, current_user, record, version, payload.reason, min_length=1)
     _log(db, current_user, f"Source '{source.title}' v{source.version} retired. Reason: {payload.reason}")
+    source.status = "RETIRED"
     db.commit()
     db.refresh(source)
     return _source_response(source)

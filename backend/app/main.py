@@ -32,6 +32,7 @@ from app.api.delegations import router as delegations_router
 from app.api.reference_data import router as reference_data_router
 from app.api.residual_review import router as residual_review_router
 from app.api.source_library import router as source_library_router
+from app.api.source_records import router as source_records_router
 from app.api.sod_exceptions import router as sod_exceptions_router
 from app.api.assistant import router as assistant_router
 from app.api.ai_challenge import router as ai_challenge_router
@@ -204,6 +205,7 @@ app.include_router(delegations_router, dependencies=_protected)
 app.include_router(reference_data_router, dependencies=_protected)
 app.include_router(residual_review_router, dependencies=_protected)
 app.include_router(source_library_router, dependencies=_protected)
+app.include_router(source_records_router, dependencies=_protected)
 app.include_router(sod_exceptions_router, dependencies=_protected)
 app.include_router(assistant_router, dependencies=_protected)
 app.include_router(ai_challenge_router, dependencies=_protected)

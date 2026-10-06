@@ -47,6 +47,8 @@ export default function SourceLibraryPage({ canManage }: { canManage: boolean })
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [adding, setAdding] = useState(false);
+  // True when the form was opened with "Upload document", so it goes straight to the file picker.
+  const [pickFile, setPickFile] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SourceSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -104,9 +106,28 @@ export default function SourceLibraryPage({ canManage }: { canManage: boolean })
           </p>
         </div>
         {canManage && !adding && (
-          <button type="button" className="sl-btn sl-btn--primary" onClick={() => setAdding(true)}>
-            <span aria-hidden="true">＋</span> Add source
-          </button>
+          <div className="sl-header__actions">
+            <button
+              type="button"
+              className="sl-btn sl-btn--primary"
+              onClick={() => {
+                setPickFile(true);
+                setAdding(true);
+              }}
+            >
+              <span aria-hidden="true">⇪</span> Upload document
+            </button>
+            <button
+              type="button"
+              className="sl-btn sl-btn--secondary"
+              onClick={() => {
+                setPickFile(false);
+                setAdding(true);
+              }}
+            >
+              <span aria-hidden="true">＋</span> Add source
+            </button>
+          </div>
         )}
       </header>
 
@@ -144,13 +165,14 @@ export default function SourceLibraryPage({ canManage }: { canManage: boolean })
 
       {adding && (
         <SourceForm
+          openPicker={pickFile}
           onCancel={() => setAdding(false)}
           onSave={(fields, file) =>
             act(async () => {
               await (file ? createSourceWithFile(fields, file) : createSource(fields));
               setAdding(false);
             }, file
-              ? "Source added as a draft with its original document. Approve it to make it available as evidence."
+              ? "Knowledge article published. It is now searchable and available as evidence and to the AI."
               : "Source added as a draft. Approve it to make it available as evidence.")
           }
         />
@@ -418,9 +440,11 @@ function ReasonAction({
 function SourceForm({
   onSave,
   onCancel,
+  openPicker = false,
 }: {
   onSave: (fields: SourceFields, file: File | null) => void;
   onCancel: () => void;
+  openPicker?: boolean;
 }) {
   // The original document, kept with the source when it is saved.
   const [file, setFile] = useState<File | null>(null);
@@ -432,6 +456,14 @@ function SourceForm({
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const id = useId();
+  const formRef = useRef<HTMLElement>(null);
+
+  // "Upload document" opens the form with the file picker already showing.
+  useEffect(() => {
+    formRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (openPicker) fileInput.current?.click();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const missing = (["title", "version", "content"] as const).filter((key) => !fields[key]?.trim());
 
   async function readFile(chosen: File | undefined) {
@@ -480,12 +512,12 @@ function SourceForm({
   }
 
   return (
-    <section className="sl-card" aria-labelledby={`${id}-heading`}>
+    <section className="sl-card" ref={formRef} aria-labelledby={`${id}-heading`}>
       <h3 className="sl-card__title" id={`${id}-heading`}>
-        Add a source
+        {openPicker ? "Upload a document" : "Add a source"}
       </h3>
       <p className="sl-card__subtitle">
-        Upload a document to read its text, or paste the text below. It is saved as a draft; approve it to use it as
+        Upload a document to publish it as a knowledge article straight away, or paste text to save it as a draft that you approve to use as
         evidence.
       </p>
 
@@ -605,7 +637,7 @@ function SourceForm({
             }, file);
           }}
         >
-          Save as draft
+          {file ? "Publish article" : "Save as draft"}
         </button>
       </div>
     </section>
