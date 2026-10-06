@@ -187,11 +187,46 @@ def identify_risks(state: RiskAssessmentState, db: Session) -> dict[str, Any]:
         from app.services.evidence_currency import usable_documents
 
         documents = usable_documents(db, documents)
+
+        # Approved knowledge articles (the Source Library) as reference
+        # context for the AI. Best-effort: never blocks the analysis.
+        knowledge_context = None
+        try:
+            from app.services.source_library import knowledge_context as _knowledge_context
+
+            knowledge_context = _knowledge_context(
+                db,
+                " ".join(
+                    filter(
+                        None,
+                        [
+                            state["assessment"].get("title"),
+                            state["assessment"].get("description"),
+                            state["assessment"].get("evidence"),
+                        ],
+                    )
+                ),
+                # Governed library sources arrive via the filtered, citable
+                # retrieval below instead.
+                exclude_governed=True,
+            ) or None
+        except Exception:  # noqa: BLE001
+            logger.warning("Knowledge-article lookup failed; continuing without it.", exc_info=True)
+
+        # Approved Source Library passages applicable to this assessment
+        # (jurisdiction, effective date, approved version only). Reference
+        # context for verified citations; never evidence about the change.
+        from app.services.source_citations import build_library_sources
+
+        library_sources = build_library_sources(db, state["assessment"])
+
         risk_factors = identify_risk_factors(
             assessment=state["assessment"],
             intelligence=state.get("intelligence"),
             similar_context=similar_context,
+            knowledge_context=knowledge_context,
             evidence_sources=build_evidence_sources(state["assessment"], documents),
+            library_sources=library_sources,
         )
         _apply_stage4_rules(risk_factors, state)
 
@@ -345,6 +380,17 @@ def identify_risks(state: RiskAssessmentState, db: Session) -> dict[str, Any]:
         )
 
     return {
+        "library_passages": [
+            {
+                "library_id": library_id,
+                "source_code": entry["passage"].source_code,
+                "title": entry["passage"].title,
+                "version": entry["passage"].version_label,
+                "location": entry["passage"].location(),
+                "method": entry["passage"].method,
+            }
+            for library_id, entry in library_sources.items()
+        ],
         "risk_factors": risk_factors,
         "ai_available": True,
         "assessment_mode": AssessmentMode.AI_ASSISTED,
@@ -504,6 +550,7 @@ def persist_results(state: RiskAssessmentState, db: Session) -> dict[str, Any]:
         )
         new_factor.set_indicators(factor.get("indicators", []))
         new_factor.set_evidence_fields(factor)
+        new_factor.set_source_citations(factor)
         if factor.get("rule_triggers"):
             import json
 
@@ -553,6 +600,21 @@ def persist_results(state: RiskAssessmentState, db: Session) -> dict[str, Any]:
         if any("evidence_status" in factor for factor in factors)
         else ""
     )
+    library_passages = state.get("library_passages") or []
+    verified_citations = sum(
+        1 for factor in factors for c in factor.get("source_citations") or [] if c.get("quote_verified")
+    )
+    rejected_citations = sum(
+        1 for factor in factors for c in factor.get("source_citations") or [] if not c.get("quote_verified")
+    )
+    library_summary = (
+        f" Source Library: {len(library_passages)} approved passage(s) from "
+        f"{len({p['source_code'] for p in library_passages})} source(s) supplied as reference "
+        f"({', '.join(sorted({p['source_code'] + ' v' + p['version'] for p in library_passages}))}); "
+        f"{verified_citations} citation(s) verified verbatim, {rejected_citations} rejected."
+        if library_passages
+        else ""
+    )
     # NOTE: this node deliberately does NOT change assessment.status.
     # Stage progression is owned exclusively by the
     # PATCH /api/assessments/{id}/advance-stage endpoint (see
@@ -574,6 +636,7 @@ def persist_results(state: RiskAssessmentState, db: Session) -> dict[str, Any]:
             "mode -- risk factors across the 10 canonical categories. "
             "No factor is scored until an analyst rates it."
             + evidence_summary
+            + library_summary
             + rules_summary
         ),
     )

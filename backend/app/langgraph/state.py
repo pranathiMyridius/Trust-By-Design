@@ -9,6 +9,9 @@ class RiskAssessmentState(TypedDict, total=False):
     # Stage 4 (R4.1-R4.4): per-category risk factors, separate from the
     # 6-dimension risk_results scoring above.
     risk_factors: list[Any]
+    # Source Library passages supplied to the analysis as reference (id,
+    # source, version, location) -- recorded in the analysis audit event.
+    library_passages: list[dict[str, Any]]
     overall_score: float
     risk_level: str
     previous_status: str

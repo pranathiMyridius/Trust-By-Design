@@ -181,6 +181,9 @@ class RiskFactorResponse(BaseModel):
     evidence: list[dict[str, Any]] = []
     rejected_indicators: list[dict[str, Any]] = []
     missing_information: list[str] = []
+    # Source Library citations the AI offered (verified and rejected); they
+    # never feed indicators, evidence status or scores.
+    source_citations: list[dict[str, Any]] = []
     # P4: fixed Stage 4 rules that required this category.
     rule_triggers: list[dict[str, Any]] = []
     rationale: str

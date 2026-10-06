@@ -117,6 +117,13 @@ class RiskFactor(Base):
     # rule fired (or the factor predates the rules).
     rule_triggers = Column(Text, nullable=True)
 
+    # Source Library: JSON list of the citations the AI offered from approved
+    # library passages -- verified and rejected alike, each with the source ID,
+    # title, version, page/section and the verbatim quote (see
+    # app/services/source_citations.py). Citations never affect indicators,
+    # evidence status, ratings or scores. NULL: none were produced.
+    source_citations = Column(Text, nullable=True)
+
     # R4.3: why this category/these indicators apply (or don't).
     rationale = Column(Text, nullable=False)
 
@@ -178,6 +185,12 @@ class RiskFactor(Base):
         self.rejected_indicators = json.dumps(factor.get("rejected_indicators") or [])
         self.missing_information = json.dumps(factor.get("missing_information") or [])
 
+    def set_source_citations(self, factor: dict) -> None:
+        import json
+
+        citations = factor.get("source_citations")
+        self.source_citations = json.dumps(citations) if citations else None
+
     @staticmethod
     def _json_list(raw: str | None) -> list:
         import json
@@ -194,6 +207,9 @@ class RiskFactor(Base):
 
     def get_evidence(self) -> list:
         return self._json_list(self.evidence)
+
+    def get_source_citations(self) -> list:
+        return self._json_list(self.source_citations)
 
     def get_rejected_indicators(self) -> list:
         return self._json_list(self.rejected_indicators)

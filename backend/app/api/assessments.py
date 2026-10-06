@@ -3171,6 +3171,7 @@ def _build_risk_factor_response(factor: RiskFactor, masked_document_ids: set[int
         rejected_indicators=factor.get_rejected_indicators(),
         missing_information=factor.get_missing_information(),
         rule_triggers=factor.get_rule_triggers(),
+        source_citations=factor.get_source_citations(),
         rationale=factor.rationale,
         misuse_scenario=factor.misuse_scenario,
         source=factor.source,
