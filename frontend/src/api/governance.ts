@@ -112,6 +112,19 @@ export function saveScoringConfig(
   });
 }
 
+// The Risk Calculator's "apply to new assessments" (admin, reason required).
+// Edits the active methodology, or clones + activates it when it is in use;
+// assessments already calculated are not recalculated.
+export function applyActiveFactorWeights(
+  factorWeights: Record<string, number>,
+  reason: string
+): Promise<{ methodology_id: number; version: number; factor_weights: Record<string, number> }> {
+  return request("/api/risk-methodologies/active/factor-weights", {
+    method: "PUT",
+    body: JSON.stringify({ factor_weights: factorWeights, reason }),
+  });
+}
+
 export function listMethodologies(): Promise<Methodology[]> {
   return request("/api/risk-methodologies");
 }

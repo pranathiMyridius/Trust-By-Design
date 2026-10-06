@@ -663,7 +663,7 @@ function AuthenticatedApp({
               }}
             />
           ) : currentPage === "calculator" ? (
-            <RiskCalculatorPage />
+            <RiskCalculatorPage canApplyWeights={user.role === "ADMIN"} />
           ) : currentPage === "approvals" ? (
             <ApprovalsPage
               user={user}

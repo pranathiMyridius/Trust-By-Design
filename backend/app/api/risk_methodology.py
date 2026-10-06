@@ -268,6 +268,41 @@ def _lineage_root(db: Session, methodology: RiskMethodology) -> int:
     return current.id
 
 
+def _clone_row(
+    db: Session, source: RiskMethodology, reason: str, name: str | None = None
+) -> RiskMethodology:
+    """An editable, inactive copy one version up. Flushes; the caller commits."""
+
+    root = _lineage_root(db, source)
+    lineage_versions = [
+        row.version or 1
+        for row in db.query(RiskMethodology).all()
+        if _lineage_root(db, row) == root
+    ]
+
+    # Materialise defaults into the clone, so it carries its full
+    # configuration explicitly rather than depending on code defaults
+    # that could change under it.
+    config = config_from_row(source)
+    clone = RiskMethodology(
+        name=name or source.name,
+        is_active=False,
+        version=max(lineage_versions) + 1,
+        parent_id=source.id,
+        change_reason=reason,
+    )
+    for column in _CONFIG_COLUMNS:
+        if column in {"weights", "thresholds"}:
+            setattr(clone, column, getattr(source, column))
+        elif column == "factor_weights":
+            clone.factor_weights = json.dumps(config["factor_weights"])
+        else:
+            setattr(clone, column, json.dumps(config[column]))
+    db.add(clone)
+    db.flush()
+    return clone
+
+
 @router.post("/{methodology_id}/clone", response_model=RiskMethodologyResponse, status_code=201)
 def clone_methodology(
     methodology_id: int,
@@ -282,33 +317,7 @@ def clone_methodology(
     """
 
     source = _get_or_404(db, methodology_id)
-    root = _lineage_root(db, source)
-    lineage_versions = [
-        row.version or 1
-        for row in db.query(RiskMethodology).all()
-        if _lineage_root(db, row) == root
-    ]
-
-    # Materialise defaults into the clone, so it carries its full
-    # configuration explicitly rather than depending on code defaults
-    # that could change under it.
-    config = config_from_row(source)
-    clone = RiskMethodology(
-        name=payload.name or source.name,
-        is_active=False,
-        version=max(lineage_versions) + 1,
-        parent_id=source.id,
-        change_reason=payload.reason,
-    )
-    for column in _CONFIG_COLUMNS:
-        if column in {"weights", "thresholds"}:
-            setattr(clone, column, getattr(source, column))
-        elif column == "factor_weights":
-            clone.factor_weights = json.dumps(config["factor_weights"])
-        else:
-            setattr(clone, column, json.dumps(config[column]))
-    db.add(clone)
-    db.flush()
+    clone = _clone_row(db, source, payload.reason, payload.name)
 
     log_audit_event(
         db=db,
@@ -604,3 +613,97 @@ def update_scoring_config(
     )
     db.commit()
     return {"methodology_id": methodology.id, "config": config_from_row(methodology)}
+
+
+class ActiveFactorWeightsUpdate(ReasonRequest):
+    factor_weights: dict[str, float]
+
+
+@router.put("/active/factor-weights")
+def apply_active_factor_weights(
+    payload: ActiveFactorWeightsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_role),
+):
+    """
+    The Risk Calculator's "apply to new assessments": makes these factor
+    weights what every NEW calculation uses. Categories not sent keep their
+    current weight.
+
+    An unused active methodology is edited in place. One that has already
+    produced a result is locked, so the change goes on a clone that is then
+    activated -- past results keep the methodology row they were computed
+    with. With no active methodology the built-in defaults are materialised
+    into a new one. Assessments already calculated are not recalculated.
+    """
+
+    errors = _validate_weights(payload.factor_weights)
+    if errors:
+        raise HTTPException(status_code=400, detail=errors)
+
+    now = datetime.now(timezone.utc)
+    actor = current_user.full_name or current_user.email
+
+    active = (
+        db.query(RiskMethodology)
+        .filter(RiskMethodology.is_active.is_(True))
+        .order_by(RiskMethodology.updated_at.desc())
+        .first()
+    )
+
+    if active is None:
+        defaults = config_from_row(None)
+        target = RiskMethodology(
+            name="Default",
+            is_active=False,
+            weights=json.dumps({"ALL": 1.0}),
+            thresholds=json.dumps(defaults["thresholds"]),
+            version=1,
+            change_reason=payload.reason,
+        )
+        for column in _CONFIG_COLUMNS:
+            if column not in {"weights", "thresholds"}:
+                setattr(target, column, json.dumps(defaults[column]))
+        db.add(target)
+        db.flush()
+        how = "created from the built-in defaults"
+    elif active.locked_at is None:
+        target = active
+        how = "edited in place (it had not been used yet)"
+    else:
+        target = _clone_row(db, active, payload.reason)
+        how = f"cloned from v{active.version or 1} because that version is in use"
+
+    merged = {**config_from_row(target)["factor_weights"], **payload.factor_weights}
+    target.factor_weights = json.dumps(merged)
+
+    if not target.is_active:
+        for previous in db.query(RiskMethodology).filter(RiskMethodology.is_active.is_(True)).all():
+            if previous.id != target.id:
+                previous.is_active = False
+                previous.retired_at = now
+        target.is_active = True
+        target.retired_at = None
+        target.approved_by = actor
+        target.approved_at = now
+        target.approval_reason = payload.reason
+        target.effective_from = now
+
+    log_audit_event(
+        db=db,
+        assessment_id=None,
+        action=AuditAction.METHODOLOGY_CHANGED,
+        actor=actor,
+        actor_id=current_user.id,
+        details=(
+            f"Factor weights set from the Risk Calculator on methodology '{target.name}' "
+            f"v{target.version or 1} ({how}); new assessments use them. Reason: {payload.reason}"
+        ),
+    )
+    db.commit()
+    db.refresh(target)
+    return {
+        "methodology_id": target.id,
+        "version": target.version or 1,
+        "factor_weights": merged,
+    }

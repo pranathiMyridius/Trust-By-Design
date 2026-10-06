@@ -12,6 +12,7 @@ import {
   saveCalculatorDraft,
   RISK_CATEGORIES,
 } from "../api/assessments";
+import { applyActiveFactorWeights } from "../api/governance";
 import RiskLevelBadge, { RiskLevelIcon } from "./RiskLevelBadge";
 import type {
   Assessment,
@@ -149,6 +150,9 @@ interface ManualScoringCalculatorProps {
   // FCRM Analyst role exists. Defaults to true so the standalone Risk
   // Calculator page (no review-workflow concept) is unaffected.
   canApplyOverride?: boolean;
+  // Standalone Risk Calculator page, Admin only: lets the calculator's
+  // factor weights become the weights new assessments are scored with.
+  canApplyWeights?: boolean;
 }
 
 function ManualScoringCalculator({
@@ -160,6 +164,7 @@ function ManualScoringCalculator({
   savedDraft = null,
   onScoreOverridden,
   canApplyOverride = true,
+  canApplyWeights = false,
 }: ManualScoringCalculatorProps) {
   const aiScoresByDimension = useMemo(() => {
     const map: Record<string, number> = {};
@@ -725,6 +730,51 @@ function ManualScoringCalculator({
   const [overrideReason, setOverrideReason] = useState("");
   const [overrideReasonMissing, setOverrideReasonMissing] = useState(false);
 
+  /*
+   * Admin-only, standalone page: publish the current weights as the ones
+   * new assessments are scored with. Deliberately explicit -- the draft
+   * above auto-saves on every edit, and that must never change scoring.
+   */
+  const [applyWeightsReason, setApplyWeightsReason] = useState("");
+  const [applyWeightsStatus, setApplyWeightsStatus] = useState<
+    "idle" | "pending" | "applied" | "error"
+  >("idle");
+  const [applyWeightsMessage, setApplyWeightsMessage] = useState<string | null>(null);
+
+  function handleApplyWeights() {
+    if (assessmentId != null || !canApplyWeights || totalWeight <= 0) return;
+
+    if (!applyWeightsReason.trim()) {
+      setApplyWeightsStatus("error");
+      setApplyWeightsMessage("Enter a reason before applying the weights.");
+      return;
+    }
+
+    const factorWeights: Record<string, number> = {};
+    DIMENSIONS.forEach((dimension) => {
+      factorWeights[dimension] = weights[dimension] / 100;
+    });
+
+    setApplyWeightsStatus("pending");
+    setApplyWeightsMessage(null);
+
+    applyActiveFactorWeights(factorWeights, applyWeightsReason.trim())
+      .then((result) => {
+        setApplyWeightsStatus("applied");
+        setApplyWeightsReason("");
+        setApplyWeightsMessage(
+          `New assessments are now scored with these weights (methodology v${result.version}). Assessments already calculated keep their stored results.`
+        );
+      })
+      .catch((err) => {
+        console.error(err);
+        setApplyWeightsStatus("error");
+        setApplyWeightsMessage(
+          err instanceof Error ? err.message : "Couldn't apply the weights."
+        );
+      });
+  }
+
   function handleApplyOverride() {
     if (assessmentId == null || isLocked || totalWeight <= 0) return;
 
@@ -1071,6 +1121,21 @@ function ManualScoringCalculator({
               </div>
             )}
 
+            {assessmentId == null && canApplyWeights && (
+              <div className="manual-score-override-reason">
+                <label htmlFor="manual-score-apply-weights-reason">
+                  Reason for applying these weights to new assessments (required)
+                </label>
+                <textarea
+                  id="manual-score-apply-weights-reason"
+                  rows={2}
+                  value={applyWeightsReason}
+                  onChange={(event) => setApplyWeightsReason(event.target.value)}
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                />
+              </div>
+            )}
+
             <div className="manual-score-actions">
               <button
                 type="button"
@@ -1088,6 +1153,20 @@ function ManualScoringCalculator({
               >
                 {draftSaveStatus === "saving" ? "Saving…" : "Save draft"}
               </button>
+
+              {assessmentId == null && canApplyWeights && (
+                <button
+                  type="button"
+                  className="pagination-button apply-override-button"
+                  onClick={handleApplyWeights}
+                  disabled={totalWeight <= 0 || applyWeightsStatus === "pending"}
+                  title="Makes these factor weights the ones every new assessment is scored with. Assessments already calculated are not changed."
+                >
+                  {applyWeightsStatus === "pending"
+                    ? "Applying…"
+                    : "Apply weights to new assessments"}
+                </button>
+              )}
 
               {assessmentId != null && canApplyOverride && (
                 <button
@@ -1150,6 +1229,18 @@ function ManualScoringCalculator({
                 {auditStatus === "logged" && "✓ Logged to Audit History"}
                 {auditStatus === "error" &&
                   "Couldn't log to Audit History — check the backend is running."}
+              </p>
+            )}
+
+            {assessmentId == null && applyWeightsMessage && (
+              <p
+                className={`manual-score-override-status ${
+                  applyWeightsStatus === "applied" ? "success" : "error"
+                }`}
+                role={applyWeightsStatus === "applied" ? "status" : "alert"}
+              >
+                {applyWeightsStatus === "applied" && "✓ "}
+                {applyWeightsMessage}
               </p>
             )}
 

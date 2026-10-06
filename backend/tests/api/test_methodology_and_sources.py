@@ -13,6 +13,8 @@ from app.auth.security import hash_password
 from app.database import SessionLocal
 from app.models.assessment import Assessment
 from app.models.residual_risk_calculation import ResidualRiskCalculation
+from app.models.risk_methodology import RiskMethodology
+from app.risk_engine.methodology import mark_methodology_used
 from app.models.user import User
 from app.services.decision_record_service import _missing_required_approvals
 from tests.conftest import PASSWORD, ok
@@ -87,6 +89,63 @@ def test_scoring_config_is_validated_and_saved(client, auth):
     assert config["factor_weights"] == {"GEOGRAPHIC_RISK": 0.3, "PRODUCT_SERVICE_RISK": 0.7}
 
 
+def _active(client, auth) -> dict:
+    rows = ok(client.get("/api/risk-methodologies", headers=auth("admin")))
+    active = [row for row in rows if row["is_active"]]
+    assert len(active) == 1, active
+    return active[0]
+
+
+def test_calculator_weights_apply_to_new_calculations_only(client, auth):
+    url = "/api/risk-methodologies/active/factor-weights"
+    body = {"factor_weights": {"GEOGRAPHIC_RISK": 0.4, "PRODUCT_SERVICE_RISK": 0.6}, "reason": "Calibrated."}
+
+    # Admin only, reason required, weights validated.
+    assert client.put(url, json=body, headers=auth("analyst")).status_code == 403
+    assert client.put(url, json={**body, "reason": " "}, headers=auth("admin")).status_code == 422
+    unknown = client.put(url, json={**body, "factor_weights": {"NOT_A_CATEGORY": 1}}, headers=auth("admin"))
+    assert unknown.status_code == 400
+    negative = client.put(url, json={**body, "factor_weights": {"GEOGRAPHIC_RISK": -1}}, headers=auth("admin"))
+    assert negative.status_code == 400
+
+    first = ok(client.put(url, json=body, headers=auth("admin")))
+    assert _active(client, auth)["id"] == first["methodology_id"]
+    assert first["factor_weights"]["GEOGRAPHIC_RISK"] == 0.4
+    # Categories that were not sent keep their weight.
+    assert first["factor_weights"]["DELIVERY_CHANNEL_RISK"] == 0.1
+
+    # Mark it as used, as a calculation would. It can no longer be edited, so
+    # the next change must land on a clone and leave this one untouched.
+    db = SessionLocal()
+    try:
+        mark_methodology_used(db, first["methodology_id"])
+        db.commit()
+    finally:
+        db.close()
+
+    second = ok(
+        client.put(
+            url,
+            json={"factor_weights": {"GEOGRAPHIC_RISK": 0.9}, "reason": "Recalibrated again."},
+            headers=auth("admin"),
+        )
+    )
+    assert second["methodology_id"] != first["methodology_id"]
+    assert second["version"] == first["version"] + 1
+    assert second["factor_weights"]["GEOGRAPHIC_RISK"] == 0.9
+    assert second["factor_weights"]["PRODUCT_SERVICE_RISK"] == 0.6
+
+    assert _active(client, auth)["id"] == second["methodology_id"]
+    old = ok(client.get(f"/api/risk-methodologies/{first['methodology_id']}/config", headers=auth("admin")))
+    assert old["config"]["factor_weights"]["GEOGRAPHIC_RISK"] == 0.4
+
+    db = SessionLocal()
+    try:
+        assert db.get(RiskMethodology, second["methodology_id"]).parent_id == first["methodology_id"]
+    finally:
+        db.close()
+
+
 def test_methodology_create_needs_an_admin(client, auth):
     response = client.post(
         "/api/risk-methodologies", json={"name": "x", "weights": {}, "thresholds": {}}, headers=auth("manager")
@@ -159,7 +218,7 @@ def test_only_approved_sources_are_searched(client, auth):
     assert ok(client.get("/api/sources/search?q=beneficial%20ownership", headers=auth("analyst"))) == []
     assert all(s["id"] != source["id"] for s in ok(client.get("/api/sources", headers=auth("analyst"))))
 
-    ok(client.post(f"/api/sources/{source['id']}/approve", json={"reason": "Signed off by CCO."}, headers=admin))
+    ok(client.post(f"/api/sources/{source['id']}/approve", json={"reason": "Signed off by CCO."}, headers=auth("compliance")))
     results = ok(client.get("/api/sources/search?q=beneficial%20ownership", headers=auth("analyst")))
     assert results and results[0]["source_title"] == "Group KYC Policy"
     top = results[0]
@@ -188,7 +247,7 @@ def test_factor_evidence_from_the_library(client, auth, analysed_assessment):
         ),
         201,
     )
-    ok(client.post(f"/api/sources/{stale['id']}/approve", json={"reason": "Published guidance."}, headers=admin))
+    ok(client.post(f"/api/sources/{stale['id']}/approve", json={"reason": "Published guidance."}, headers=auth("compliance")))
 
     aid = analysed_assessment()["id"]
     factors = ok(client.get(f"/api/assessments/{aid}/risk-factors", headers=auth("analyst")))
